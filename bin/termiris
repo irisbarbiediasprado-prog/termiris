@@ -1,0 +1,3 @@
+#!/data/data/com.termux/files/usr/bin/bash
+. "$HOME/.termiris/init.sh"
+name="${1:-help}"; shift || true; cmd="$HOME/.termiris/bin/$name"; [ -x "$cmd" ] && exec "$cmd" "$@"; case "$name" in help) printf "Termiris\n\nComandos instalados:\n"; find "$HOME/.termiris/bin" -maxdepth 1 -type f ! -name termiris -exec basename {} \; | sort;; api) declare -F | cut -d" " -f3 | sort;; *) printf "Comando não encontrado: %s\n" "$name"; exit 1;; esac
