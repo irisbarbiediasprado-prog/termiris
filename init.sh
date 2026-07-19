@@ -2,3 +2,4 @@
 [ -f ~/.termiris/lib/api.sh ] && . ~/.termiris/lib/api.sh
 
 [ -f ~/.termiris/lib/tmux.sh ] && . ~/.termiris/lib/tmux.sh
+[ -f ~/.termiris/lib/fzf.sh ] && . ~/.termiris/lib/fzf.sh
