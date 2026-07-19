@@ -1,0 +1,2 @@
+#!/data/data/com.termux/files/usr/bin/bash
+tmux capture-pane -pS - | termux-clipboard-set

@@ -1,3 +1,6 @@
 #!/data/data/com.termux/files/usr/bin/bash
-cmd="$(termux-clipboard-get)" || exit 1
-tmux send-keys -l -- "$cmd" C-m
+tmp="$HOME/.cache/tmux-clipboard"
+termux-clipboard-get > "$tmp" || exit 1
+tmux load-buffer "$tmp" || exit 1
+tmux paste-buffer
+tmux send-keys Enter
