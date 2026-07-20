@@ -1,0 +1,40 @@
+#!/data/data/com.termux/files/usr/bin/bash
+. ~/.termiris/init.sh
+
+tmpfile="$HOME/.cache/nav_list"
+mkdir -p "$(dirname "$tmpfile")"
+> "$tmpfile"  # limpa o arquivo
+
+# Sempre inclui home e Projects
+echo "~" >> "$tmpfile"
+echo "~/Projects" >> "$tmpfile"
+echo "~/Documents/notas" >> "$tmpfile"
+
+# Adiciona diretórios do zoxide (se existir)
+if command -v zoxide >/dev/null; then
+    zoxide query -l 2>/dev/null | sed "s|^$HOME|~|" >> "$tmpfile"
+fi
+
+# Adiciona o diretório atual (se não estiver em $HOME)
+if [ "$PWD" != "$HOME" ]; then
+    echo "$PWD" | sed "s|^$HOME|~|" >> "$tmpfile"
+fi
+
+# Remove duplicatas e linhas vazias
+sort -u "$tmpfile" -o "$tmpfile" 2>/dev/null
+sed -i '/^$/d' "$tmpfile"
+
+# Seleciona com fzf
+target=$(cat "$tmpfile" | fzf --height=100% --layout=reverse --border=none --prompt="🚀 Navegar > " \
+    --preview='dir=$(echo {} | sed "s|~|$HOME|"); ls -la "$dir" 2>/dev/null | head -20' \
+    --preview-window='down,35%,border-top,wrap' \
+    | sed "s|~|$HOME|")
+
+if [ -n "$target" ] && [ -d "$target" ]; then
+    cd "$target" || exit 1
+    tmux new-window -c "$target" 2>/dev/null
+    echo "📍 $target"
+else
+    echo "❌ Nenhum diretório selecionado ou inválido"
+    exit 1
+fi
