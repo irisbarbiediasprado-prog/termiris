@@ -1,1 +1,0 @@
-ff(){ local f; f="$(fd -t f . "${1:-.}" | fzf --prompt="📄 Arquivos > ")" || return; am start -a android.intent.action.VIEW -d "file://$(realpath "$f")" -t "*/*" >/dev/null 2>&1 && echo "✓ Aberto: $f"; }

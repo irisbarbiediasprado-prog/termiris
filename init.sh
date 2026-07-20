@@ -1,5 +1,2 @@
 #!/data/data/com.termux/files/usr/bin/bash
-[ -f ~/.termiris/lib/api.sh ] && . ~/.termiris/lib/api.sh
-
-[ -f ~/.termiris/lib/tmux.sh ] && . ~/.termiris/lib/tmux.sh
-[ -f ~/.termiris/lib/fzf.sh ] && . ~/.termiris/lib/fzf.sh
+[ -f ~/.termiris/lib/core.sh ] && . ~/.termiris/lib/core.sh

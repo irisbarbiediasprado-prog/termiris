@@ -1,0 +1,6 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -e
+dir="$(realpath "${1:-$PWD}")"
+cd "$dir"
+f="$(fd -tf --hidden --follow --exclude .git . | fzf --height=100% --layout=reverse --border=none --preview='bat --style=numbers --color=always --line-range=:300 {}' --preview-window='down,35%,border-top,wrap')" || exit 0
+am start -a android.intent.action.VIEW -d "file://$dir/$f" -t "*/*" >/dev/null 2>&1

@@ -1,0 +1,15 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+
+dir="${1:-$PWD}"
+cd "$dir"
+
+fd --type f --hidden --follow --exclude .git --strip-cwd-prefix . \
+| fzf \
+    --height=100% \
+    --layout=reverse \
+    --border=none \
+    --info=inline \
+    --prompt="$(basename "$PWD") > " \
+    --preview='bat --style=numbers --color=always --line-range=:200 {}' \
+    --preview-window='down,35%,border-top,wrap'

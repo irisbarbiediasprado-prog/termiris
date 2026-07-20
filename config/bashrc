@@ -1,0 +1,14 @@
+export GIT_PAGER=cat
+# Inicia tmux automaticamente se não estiver dentro dele
+if command -v tmux >/dev/null && [ -z "$TMUX" ]; then
+    exec tmux new-session -A -s main
+fi
+
+# Carrega Termiris (core unificado)
+[ -f ~/.termiris/init.sh ] && . ~/.termiris/init.sh
+
+export PATH="$HOME/.termiris/bin:$PATH"
+eval "$(zoxide init bash)"
+
+# fzf
+[ -n "$BASH_VERSION" ] && eval "$(fzf --bash)"
