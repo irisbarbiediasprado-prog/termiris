@@ -1,0 +1,17 @@
+#!/data/data/com.termux/files/usr/bin/bash
+. ~/.termiris/init.sh
+projetos_dir="$HOME/Projects"
+mkdir -p "$projetos_dir"
+nome="${1:-$(date +%Y%m%d_%H%M%S)}"
+dir="$projetos_dir/$nome"
+if [ -d "$dir" ]; then
+    echo "📁 Projeto já existe: $nome"
+    cd "$dir" || exit 1
+    tmux new-window "nvim +startinsert README.md"
+else
+    mkdir -p "$dir"
+    cd "$dir" || exit 1
+    echo "# $nome\n\n## $(date '+%d/%m/%Y %H:%M')\n" > "README.md"
+    echo "📁 Projeto criado: $nome"
+    tmux new-window "nvim +startinsert README.md"
+fi

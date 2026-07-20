@@ -1,0 +1,50 @@
+#!/data/data/com.termux/files/usr/bin/bash
+echo "🔍 Termiris Sanity Check"
+echo "========================"
+
+# Dependências
+echo -n "📦 tmux: "
+command -v tmux >/dev/null && echo "✅ $(tmux -V)" || echo "❌ faltando"
+echo -n "📦 fzf: "
+command -v fzf >/dev/null && echo "✅ $(fzf --version)" || echo "❌ faltando"
+echo -n "📦 fd: "
+command -v fd >/dev/null && echo "✅ $(fd --version)" || echo "❌ faltando"
+echo -n "📦 bat: "
+command -v bat >/dev/null && echo "✅ $(bat --version)" || echo "❌ faltando (para previews)"
+echo -n "📦 git: "
+command -v git >/dev/null && echo "✅ $(git --version)" || echo "❌ faltando"
+echo -n "📦 termux-api: "
+command -v termux-clipboard-get >/dev/null && echo "✅ instalado" || echo "❌ faltando"
+echo -n "📦 editor (vim/nvim): "
+command -v nvim >/dev/null && echo "✅ nvim" || command -v vim >/dev/null && echo "✅ vim" || echo "⚠️  recomendado para notas"
+
+# Arquivos essenciais
+echo -e "\n📁 Arquivos essenciais:"
+[ -f ~/.termiris/init.sh ] && echo "  ✅ init.sh" || echo "  ❌ init.sh"
+[ -f ~/.termiris/lib/core.sh ] && echo "  ✅ core.sh" || echo "  ❌ core.sh"
+[ -f ~/.termiris/config/bashrc ] && echo "  ✅ bashrc" || echo "  ❌ bashrc"
+[ -f ~/.termiris/config/tmux.conf ] && echo "  ✅ tmux.conf" || echo "  ❌ tmux.conf"
+[ -f ~/.termux/termux.properties ] && echo "  ✅ termux.properties" || echo "  ❌ termux.properties"
+
+# Symlinks
+echo -e "\n🔗 Symlinks:"
+[ -L ~/.bashrc ] && echo "  ✅ .bashrc -> $(readlink ~/.bashrc)" || echo "  ❌ .bashrc (não é link)"
+[ -L ~/.tmux.conf ] && echo "  ✅ .tmux.conf -> $(readlink ~/.tmux.conf)" || echo "  ❌ .tmux.conf (não é link)"
+
+# Scripts executáveis
+echo -e "\n📜 Scripts (bin/):"
+for script in colar copiar ff buscar nota projeto; do
+  if [ -x "bin/$script" ]; then echo "  ✅ $script"; else echo "  ❌ $script"; fi
+done
+
+# Tmux ativo
+echo -e "\n🖥️  Tmux:"
+tmux list-sessions 2>/dev/null && echo "  ✅ Ativo" || echo "  ⚠️  Nenhuma sessão ativa (use 'tmux')"
+
+# Extra-keys
+echo -e "\n⌨️  Extra-keys:"
+grep -q "ALT b" ~/.termux/termux.properties && echo "  ✅ 🔍 Buscar" || echo "  ❌ 🔍 Buscar"
+grep -q "ALT o" ~/.termux/termux.properties && echo "  ✅ 🗒 Nota" || echo "  ❌ 🗒 Nota"
+grep -q "ALT j" ~/.termux/termux.properties && echo "  ✅ 📁 Projeto" || echo "  ❌ 📁 Projeto"
+
+echo -e "\n✅ Check concluído. Corrija os itens com ❌ ou ⚠️."

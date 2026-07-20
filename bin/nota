@@ -1,0 +1,19 @@
+#!/data/data/com.termux/files/usr/bin/bash
+. ~/.termiris/init.sh
+nota_dir="$HOME/Documents/notas"
+mkdir -p "$nota_dir"
+nome="${1:-$(date +%Y%m%d_%H%M%S)}"
+arquivo="$nota_dir/$nome.md"
+if [ -f "$arquivo" ]; then
+    echo "📝 Editando nota existente: $nome"
+else
+    echo "# $(date '+%d/%m/%Y %H:%M')\n" > "$arquivo"
+    echo "📝 Nova nota criada: $nome"
+fi
+if command -v nvim >/dev/null; then
+    tmux new-window "nvim +startinsert '$arquivo'"
+elif command -v vim >/dev/null; then
+    tmux new-window "vim +startinsert '$arquivo'"
+else
+    echo "⚠️  Nenhum editor encontrado"
+fi
