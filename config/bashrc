@@ -12,3 +12,5 @@ eval "$(zoxide init bash)"
 
 # fzf
 [ -n "$BASH_VERSION" ] && eval "$(fzf --bash)"
+
+[ -f ~/.config/termiris/env ] && . ~/.config/termiris/env

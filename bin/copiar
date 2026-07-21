@@ -1,2 +1,6 @@
 #!/data/data/com.termux/files/usr/bin/bash
-tmux capture-pane -pS - | termux-clipboard-set
+tmux capture-pane -pS - \
+| sed '/./,$!d' \
+| tail -n 30 \
+| sed -e ':a' -e '/^\n*$/{$d;N;ba' -e '}' \
+| termux-clipboard-set
