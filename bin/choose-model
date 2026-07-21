@@ -1,0 +1,33 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+
+. "$HOME/.termiris/lib/tmux_fzf.sh"
+
+CFG="$HOME/.config/aichat/config.yaml"
+
+models="$(aichat --list-models)"
+
+provider="$(
+printf '%s\n' "$models" \
+| cut -d: -f1 \
+| sort -u \
+| tmux_fzf \
+    --prompt='🤖 Provider > ' \
+    --layout=reverse \
+    --border
+)" || exit 130
+
+model="$(
+printf '%s\n' "$models" \
+| grep "^${provider}:" \
+| tmux_fzf \
+    --prompt="🧠 ${provider} > " \
+    --layout=reverse \
+    --border
+)" || exit 130
+
+MODEL="$model" yq -i '.model = strenv(MODEL)' "$CFG"
+
+yq ".model == strenv(model)" "$CFG" | grep -qx true \
+&& printf '✓ Modelo: %s\n' "$model" \
+|| { echo '✗ Falhou'; exit 1; }

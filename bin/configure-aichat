@@ -1,0 +1,39 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+
+command -v aichat >/dev/null || { echo "❌ aichat não instalado"; exit 1; }
+command -v yq >/dev/null || { echo "❌ yq não instalado"; exit 1; }
+
+CFG="$HOME/.config/aichat"
+TMP="$(mktemp -d)"
+trap 'rm -rf "$TMP"' EXIT
+
+mkdir -p "$CFG"
+
+echo "==> Sincronizando catálogo..."
+aichat --sync-models >/dev/null
+
+echo "==> Baixando config.example.yaml..."
+curl -fsSL https://raw.githubusercontent.com/sigoden/aichat/v0.30.0/config.example.yaml -o "$TMP/config.example.yaml"
+
+printf "Gemini API Key: "
+read -r GEMINI_API_KEY
+export GEMINI_API_KEY
+
+echo "==> Gerando config.yaml..."
+
+yq -n '
+.clients = load("'"$TMP"'/config.example.yaml").clients |
+.providers.gemini = load("'"$CFG"'/models-override.yaml").providers.gemini
+' > "$CFG/config.yaml"
+
+yq -i '
+(.clients[] | select(.type=="gemini")).api_key = strenv(GEMINI_API_KEY)
+' "$CFG/config.yaml"
+
+echo "✓ config.yaml criado"
+
+echo "==> Validando..."
+aichat --list-models >/dev/null \
+&& echo "✓ configuração válida" \
+|| { echo "✗ configuração inválida"; exit 1; }

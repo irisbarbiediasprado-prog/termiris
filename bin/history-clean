@@ -1,0 +1,34 @@
+#!/data/data/com.termux/files/usr/bin/bash
+
+SRC="$HOME/.bash_history"
+OUT="$HOME/.termiris/cache/bash_history.clean"
+
+mkdir -p "$(dirname "$OUT")"
+
+awk '
+/^[[:space:]]*cat[[:space:]]*>/ {skip=1; next}
+/^[[:space:]]*cat[[:space:]]*>>/ {skip=1; next}
+/^[[:space:]]*python(3)?[[:space:]]*- <</ {skip=1; next}
+/^[[:space:]]*tee[[:space:]].*<</ {skip=1; next}
+
+/^EOF$/ || /^PY$/ {skip=0; next}
+
+skip {next}
+
+/^[[:space:]]*awk '\''/ {skip=1; next}
+/^[[:space:]]*grep .*history/ {next}
+/^[[:space:]]*set \+[Hh]$/ {next}
+/^[[:space:]]*unset -f / {next}
+/^[[:space:]]*PROMPT_COMMAND=/ {next}
+/^[[:space:]]*sed -i .*&&/ {next}
+
+length($0)>300 {next}
+
+{print}
+' "$SRC" > "$OUT"
+
+printf '✓ histórico limpo gerado: %s\n' "$OUT"
+printf 'Original: '
+wc -l < "$SRC"
+printf 'Limpo:    '
+wc -l < "$OUT"

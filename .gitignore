@@ -1,2 +1,4 @@
 .cache/
 .config/termiris/env
+cache/
+test/

@@ -1,10 +1,11 @@
 export GIT_PAGER=cat
+
 # Inicia tmux automaticamente se não estiver dentro dele
 if command -v tmux >/dev/null && [ -z "$TMUX" ]; then
     exec tmux new-session -A -s main
 fi
 
-# Carrega Termiris (core unificado)
+# Carrega Termiris
 [ -f ~/.termiris/init.sh ] && . ~/.termiris/init.sh
 
 export PATH="$HOME/.termiris/bin:$PATH"
@@ -14,3 +15,21 @@ eval "$(zoxide init bash)"
 [ -n "$BASH_VERSION" ] && eval "$(fzf --bash)"
 
 [ -f ~/.config/termiris/env ] && . ~/.config/termiris/env
+
+# Termiris history
+export HISTFILE="$HOME/.bash_history"
+export HISTSIZE=100000
+export HISTFILESIZE=200000
+export HISTCONTROL=ignoredups:erasedups
+export HISTIGNORE="ls:cd:pwd:exit:clear"
+shopt -s histappend
+
+
+
+# Termiris clean history search
+_fzf_termiris_history() {
+    history-clean >/dev/null
+    tac ~/.termiris/cache/bash_history.clean | fzf
+}
+
+bind -x '"\C-r":_fzf_termiris_history'
