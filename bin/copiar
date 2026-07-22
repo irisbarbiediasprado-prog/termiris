@@ -1,6 +1,6 @@
 #!/data/data/com.termux/files/usr/bin/bash
 
 tmux capture-pane -p \
-| tail -n 30 \
+| tail -n 50 \
 | sed -e ':a' -e '/^[[:space:]]*$/{$d;N;ba' -e '}' \
 | termux-clipboard-set

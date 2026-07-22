@@ -2,3 +2,4 @@
 .config/termiris/env
 cache/
 test/
+tmp/

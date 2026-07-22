@@ -2,11 +2,38 @@
 
 CHAT=ia_chat
 MAIN=main
+WATCH_DIRS=(
+    "$HOME/Projects"
+    "$HOME/.termiris"
+    "$HOME/.config"
+)
 
-if ! tmux has-session -t "$CHAT" 2>/dev/null; then
-    tmux new-session -d -s "$CHAT" -n Chat 'aichat -s termiris_ctx'
-    tmux new-window -t "$CHAT":2 -n Monitor \
-        'find . -type f \( -name "*.c" -o -name "*.h" -o -name "*.py" -o -name "*.js" -o -name "*.lua" -o -name "*.vim" -o -name "*.sh" -o -name "*.md" \) | entr -p ~/.termiris/bin/update_context.sh /_'
+start_monitor() {
+    tmux new-window -d -t "$CHAT": -n Monitor "bash -c '
+        echo \"🤖 Monitor iniciado\"
+
+        inotifywait -m -r \
+            -e modify,create,delete \
+            --format \"%w%f\" \
+            ${WATCH_DIRS[*]} 2>/dev/null |
+        while read -r FILE; do
+            case \"\$FILE\" in
+                *.c|*.h|*.py|*.js|*.lua|*.vim|*.sh|*.md|*.yaml|*.yml|*.json|*.toml)
+                    ~/.termiris/bin/update_context.sh \"\$FILE\"
+                    ;;
+            esac
+        done
+    '"
+}
+
+tmux has-session -t "$CHAT" 2>/dev/null || \
+    tmux new-session -d -s "$CHAT" -n Chat 'exec aichat -s termiris_ctx'
+
+tmux list-windows -t "$CHAT" | grep -q 'Monitor' || start_monitor
+
+if ! pgrep -f 'inotifywait.*Projects' >/dev/null; then
+    tmux kill-window -t "$CHAT":Monitor 2>/dev/null
+    start_monitor
 fi
 
 CURRENT="$(tmux display-message -p '#{session_name}')"

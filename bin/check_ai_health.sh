@@ -1,44 +1,83 @@
 #!/data/data/com.termux/files/usr/bin/bash
 
-API="https://api.groq.com/openai/v1/models"
+ok(){ printf "🟢 %s\n" "$1"; }
+err(){ printf "🔴 %s\n" "$1"; }
+info(){ printf "ℹ️  %s\n" "$1"; }
 
-echo "=== 🤖 Diagnóstico da IA Termiris ==="
+CFG="$HOME/.config/aichat/config.yaml"
 
-printf "%-18s" "Monitor:"
-pgrep -f "entr.*update_context" >/dev/null \
-    && echo "🟢 ATIVO" \
-    || echo "🔴 INATIVO"
+echo "=== 🤖 Diagnóstico da IA ==="
 
-printf "%-18s" "Sessão tmux:"
-tmux has-session -t ia_chat 2>/dev/null \
-    && echo "🟢 ATIVA" \
-    || echo "🔴 INATIVA"
+echo
+echo "Configuração"
 
-printf "%-18s" "Modelo:"
-aichat --role termiris_ctx --dry-run "ping" >/dev/null 2>&1 \
-    && echo "🟢 OK" \
-    || echo "🔴 FALHA"
+if [ -f "$CFG" ]; then
+    ok "config.yaml"
+else
+    err "config.yaml"
+    exit 1
+fi
 
-printf "%-18s" "API Groq:"
+MODEL="$(awk '/^model:/{m=$2} END{print m}' "$CFG")"
 
-HTTP=$(curl -s \
-    -o /dev/null \
-    -w "%{http_code}" \
-    --max-time 5 \
-    -H "Authorization: Bearer $GROQ_API_KEY" \
-    "$API")
+if [ -n "$MODEL" ]; then
+    ok "Modelo: $MODEL"
+else
+    err "Nenhum modelo configurado"
+    exit 1
+fi
 
-case "$HTTP" in
-    200)
-        echo "🟢 OK"
-        ;;
-    401)
-        echo "🔴 Chave inválida"
-        ;;
-    429)
-        echo "🟡 Limite atingido"
-        ;;
-    *)
-        echo "🔴 HTTP $HTTP"
-        ;;
-esac
+echo
+echo "Sessão"
+
+if tmux has-session -t ia_chat 2>/dev/null; then
+    ok "Sessão ia_chat"
+else
+    err "Sessão ia_chat"
+fi
+
+if pgrep -af aichat >/dev/null; then
+    ok "Processo aichat"
+else
+    err "Processo aichat"
+fi
+
+echo
+echo "Modelo"
+
+TMP="$(mktemp)"
+START=$(date +%s%3N)
+
+if printf "ping\n" | aichat --no-stream >"$TMP" 2>&1; then
+    END=$(date +%s%3N)
+    LAT=$((END-START))
+
+    ok "Modelo respondeu"
+    info "Latência: ${LAT} ms"
+
+    echo
+    echo "Última resposta"
+    tail -n 8 "$TMP"
+
+    echo
+    echo "Resultado"
+    ok "IA operacional"
+else
+    END=$(date +%s%3N)
+    LAT=$((END-START))
+
+    err "Modelo não respondeu"
+    info "Latência: ${LAT} ms"
+
+    echo
+    echo "Erro"
+    cat "$TMP"
+
+    echo
+    echo "Resultado"
+    err "IA indisponível"
+    rm -f "$TMP"
+    exit 1
+fi
+
+rm -f "$TMP"

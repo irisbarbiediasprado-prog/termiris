@@ -1,0 +1,85 @@
+#!/data/data/com.termux/files/usr/bin/bash
+
+ok(){ printf "🟢 %s\n" "$1"; }
+err(){ printf "🔴 %s\n" "$1"; }
+info(){ printf "ℹ️  %s\n" "$1"; }
+
+LOG="$HOME/.termiris/tmp/update_context.log"
+AILOG="$HOME/.termiris/tmp/aichat.log"
+
+echo "=== 👀 Monitor de Contexto ==="
+
+echo
+echo "Sessão tmux"
+if tmux has-session -t ia_chat 2>/dev/null; then
+    ok "Sessão ia_chat encontrada"
+else
+    err "Sessão ia_chat não existe"
+    exit 1
+fi
+
+echo
+echo "Janelas"
+WINDOWS="$(tmux list-windows -t ia_chat -F '#{window_index}: #{window_name}')"
+printf '%s\n' "$WINDOWS"
+
+if printf '%s\n' "$WINDOWS" | grep -q 'Monitor'; then
+    ok "Janela Monitor encontrada"
+else
+    err "Janela Monitor não encontrada"
+    exit 1
+fi
+
+echo
+echo "Processo"
+PIDS="$(pgrep -af inotifywait)"
+if [ -n "$PIDS" ]; then
+    printf '%s\n' "$PIDS"
+    ok "inotifywait ativo"
+else
+    err "inotifywait não encontrado"
+    exit 1
+fi
+
+echo
+echo "Teste"
+
+mkdir -p "$HOME/.termiris/test" "$HOME/.termiris/tmp"
+
+TOKEN="$(date +%s%N)"
+FILE="$HOME/.termiris/test/check_${TOKEN}.c"
+
+printf 'int main(void){return %s;}\n' "$TOKEN" > "$FILE"
+
+info "Arquivo: $(basename "$FILE")"
+echo "⏳ Aguardando monitor..."
+
+sleep 2
+
+echo
+echo "Último evento"
+if [ -f "$LOG" ]; then
+    tail -n 8 "$LOG"
+else
+    echo "(sem log)"
+fi
+
+echo
+echo "Resposta da IA"
+if [ -s "$AILOG" ]; then
+    tail -n 8 "$AILOG"
+else
+    echo "(sem log dedicado)"
+fi
+
+echo
+echo "Resultado"
+
+if grep -q "$TOKEN" "$LOG" 2>/dev/null; then
+    ok "Contexto atualizado"
+    ok "Fluxo completo funcionando"
+else
+    err "Token não encontrado no log"
+fi
+
+rm -f "$FILE"

@@ -1,6 +1,0 @@
-#!/data/data/com.termux/files/usr/bin/bash
-. ~/.termiris/init.sh
-dir="${1:-.}"
-cd "$dir" 2>/dev/null || exit 1
-echo "🔍 Buscando arquivos em $(pwd)..."
-fd --type f --hidden --follow --exclude .git . | fzf --height=100% --layout=reverse --border=none --preview='bat --style=numbers --color=always --line-range=:200 {}' --preview-window='down,35%,border-top,wrap' | xargs -r -I {} am start -a android.intent.action.VIEW -d "file://$(realpath {})" -t "*/*" >/dev/null 2>&1 && echo "✓ Arquivo aberto"

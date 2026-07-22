@@ -1,28 +1,51 @@
 #!/data/data/com.termux/files/usr/bin/bash
-# update_context.sh corrigido - Passagem limpa via redirecionamento de arquivo
+
 ARQUIVO="$1"
 MAX_SIZE=200000
 
-if [ ! -f "$ARQUIVO" ]; then
-    exit 0
+LOG="$HOME/.termiris/tmp/update_context.log"
+AILOG="$HOME/.termiris/tmp/aichat.log"
+LOCK="$HOME/.termiris/tmp/ctx.lock"
+
+mkdir -p "$HOME/.termiris/tmp"
+
+exec 9>"$LOCK"
+flock -n 9 || exit 0
+
+{
+    echo
+    echo "============================================================"
+    echo "$(date)"
+    echo "update_context.sh chamado com: $ARQUIVO"
+} >> "$LOG"
+
+if [ -f "$ARQUIVO" ]; then
+    TAMANHO=$(wc -c < "$ARQUIVO")
+    echo "Tamanho: $TAMANHO bytes" >> "$LOG"
+
+    if [ "$TAMANHO" -lt "$MAX_SIZE" ]; then
+
+        {
+            echo
+            echo "============================================================"
+            echo "$(date)"
+            echo "Arquivo: $(realpath "$ARQUIVO")"
+            echo
+            cat "$ARQUIVO"
+        } | aichat -s termiris_ctx >> "$AILOG" 2>&1
+
+        STATUS=$?
+
+        if [ "$STATUS" -eq 0 ]; then
+            echo "API: 🟢 OK" >> "$LOG"
+        else
+            echo "API: 🔴 ERRO ($STATUS)" >> "$LOG"
+        fi
+    else
+        echo "Arquivo muito grande: $TAMANHO bytes" >> "$LOG"
+    fi
+else
+    echo "Arquivo não encontrado: $ARQUIVO" >> "$LOG"
 fi
 
-LOCKFILE="/data/data/com.termux/files/usr/tmp/ctx.lock"
-exec 9>"$LOCKFILE"
-if ! flock -n 9; then
-    exit 0
-fi
-
-TAMANHO=$(wc -c < "$ARQUIVO")
-if [ "$TAMANHO" -lt "$MAX_SIZE" ]; then
-    # Usando o parâmetro -f do aichat para injetar o arquivo sem emular digitação no chat ativo
-    aichat -s termiris_ctx -f "$ARQUIVO" --dry-run > /dev/null 2>&1
-    
-    # Alimentação complementar via append silencioso na sessão
-    {
-        echo "--- CONTEXTO ATUALIZADO ($(date '+%H:%M:%S')) ---"
-        echo "Arquivo: $(realpath "$ARQUIVO")"
-        echo "Conteúdo:"
-        cat "$ARQUIVO"
-    } | aichat -s termiris_ctx > /dev/null 2>&1
-fi
+echo "------------------------------------------------------------" >> "$LOG"
