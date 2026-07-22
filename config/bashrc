@@ -28,8 +28,14 @@ shopt -s histappend
 
 # Termiris clean history search
 _fzf_termiris_history() {
+    local cmd
+
     history-clean >/dev/null
-    tac ~/.termiris/cache/bash_history.clean | fzf
+
+    cmd=$(tac ~/.termiris/cache/bash_history.clean | fzf) || return
+
+    READLINE_LINE="$cmd"
+    READLINE_POINT=${#READLINE_LINE}
 }
 
 bind -x '"\C-r":_fzf_termiris_history'
