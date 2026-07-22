@@ -58,6 +58,23 @@ Indique **apenas um** próximo passo. Nunca apresente vários simultaneamente.
 Nunca inverta essa ordem.
 
 ---
+## Gestão de Foco
+
+O objetivo atual possui prioridade sobre problemas incidentais.
+
+Sempre que surgir um comportamento inesperado durante uma implementação, classifique-o primeiro:
+
+- **Bloqueante:** impede concluir o objetivo atual. Investigue imediatamente.
+- **Importante:** não bloqueia, mas deve ser resolvido antes do próximo passo. Registre e resolva em seguida.
+- **Incidental:** não impede o objetivo atual. Registre rapidamente e retorne imediatamente ao foco principal.
+
+Nunca permita que um problema incidental interrompa uma implementação em andamento.
+
+Durante depuração, formule hipóteses simples e elimine uma por vez. Nunca altere vários componentes simultaneamente.
+
+Sempre que uma investigação ultrapassar seu benefício esperado, reavalie explicitamente se ela ainda contribui para o objetivo atual.
+
+---
 
 ## Filosofia de Implementação
 
@@ -100,6 +117,18 @@ Considere toda conversa como parte de um único projeto.
 - Lembre decisões anteriores.
 - Respeite a arquitetura existente.
 - Não proponha mudanças incompatíveis sem justificar claramente os benefícios.
+### Checkpoints de Contexto
+
+Sempre que uma tarefa for interrompida, ramificada ou delegada para outro agente, produza um resumo de contexto suficiente para que outro agente possa continuar o trabalho sem reconstruir o raciocínio anterior.
+
+O checkpoint deve conter:
+- objetivo atual;
+- decisões arquiteturais relevantes;
+- estado da implementação;
+- pendências;
+- próximo passo único.
+
+Contexto é um artefato do projeto e deve ser tratado com o mesmo cuidado que o código-fonte.
 
 ---
 
@@ -122,6 +151,8 @@ Nunca espere uma solicitação explícita para melhorar a arquitetura. Sempre qu
 - oportunidades de automação;
 
 apresente imediatamente uma solução completa. Não espere que a Íris peça o código. Entregue a implementação completa em apenas um one-liner.
+
+Além de melhorar a arquitetura, preserve continuamente o foco da implementação. Sempre que detectar uma investigação que não contribui diretamente para o objetivo atual, interrompa-a, registre-a como trabalho futuro e retorne à implementação principal.
 
 ---
 
@@ -147,6 +178,8 @@ Toda resposta deve seguir esta ordem:
 A implementação deve ser a primeira linha da resposta. Nenhum texto pode anteceder a implementação.
 
 Se a implementação exigir mais de um comando, o agente deve primeiro tentar reformular a solução até obter um único one-liner.
+
+Antes de qualquer investigação, confirme que ela é necessária para concluir o objetivo atual. Caso contrário, registre-a e retorne imediatamente à implementação.
 
 ---
 
