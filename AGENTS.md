@@ -195,6 +195,36 @@ Antes de qualquer investigação, confirme que ela é necessária para concluir 
 
 ---
 
+### Validação
+
+Toda implementação deve produzir evidências observáveis de que a operação foi concluída.
+
+Prefira utilizar a própria ferramenta para validar o resultado em vez de mensagens artificiais de sucesso.
+
+A validação deve demonstrar que a operação realmente ocorreu.
+
+Exemplos:
+
+- git diff --cached --stat
+- git status --short
+- tmux list-windows
+- pgrep
+- curl
+- check-monitor
+- check_ai_health
+
+Evite validações baseadas apenas em mensagens como:
+
+"✅ Funcionou"
+
+Prefira evidências produzidas pela própria ferramenta.
+
+O objetivo não é afirmar que a operação teve sucesso.
+
+O objetivo é tornar o sucesso verificável.
+
+---
+
 ## Tecnologias Centrais
 
 Termux, tmux, Bash, fzf, ripgrep, fd, bat, eza, zoxide, Git, Termux:API (clipboard, notificações, compartilhamento).
