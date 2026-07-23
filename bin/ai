@@ -1,40 +1,50 @@
 #!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
 
 CHAT=ia_chat
 MAIN=main
-WATCH_DIRS=(
-    "$HOME/Projects"
-    "$HOME/.termiris"
-    "$HOME/.config"
-)
 
-start_monitor() {
-    tmux new-window -d -t "$CHAT": -n Monitor "bash -c '
-        echo \"🤖 Monitor iniciado\"
-
-        inotifywait -m -r \
-            -e modify,create,delete \
-            --format \"%w%f\" \
-            ${WATCH_DIRS[*]} 2>/dev/null |
-        while read -r FILE; do
-            case \"\$FILE\" in
-                *.c|*.h|*.py|*.js|*.lua|*.vim|*.sh|*.md|*.yaml|*.yml|*.json|*.toml)
-                    ~/.termiris/bin/update_context.sh \"\$FILE\"
-                    ;;
-            esac
-        done
-    '"
+ensure_session() {
+    tmux has-session -t "$CHAT" 2>/dev/null || \
+        tmux new-session -d -s "$CHAT" -n Chat \
+            'exec aichat -s termiris_ctx'
 }
 
-tmux has-session -t "$CHAT" 2>/dev/null || \
-    tmux new-session -d -s "$CHAT" -n Chat 'exec aichat -s termiris_ctx'
+reconcile_window() {
+    local NAME="$1"
+    local CMD="$2"
 
-tmux list-windows -t "$CHAT" | grep -q 'Monitor' || start_monitor
+    local IDS
+    IDS="$(tmux list-windows -t "$CHAT" -F '#{window_id} #{window_name}' \
+        | awk -v n="$NAME" '$2==n{print $1}')"
 
-if ! pgrep -f 'inotifywait.*Projects' >/dev/null; then
-    tmux kill-window -t "$CHAT":Monitor 2>/dev/null
-    start_monitor
-fi
+    local COUNT
+    COUNT="$(printf '%s\n' "$IDS" | sed '/^$/d' | wc -l)"
+
+    case "$COUNT" in
+        0)
+            tmux new-window -d -t "$CHAT:" -n "$NAME" "$CMD"
+            ;;
+        1)
+            ;;
+        *)
+            printf '%s\n' "$IDS" | tail -n +2 | while read -r ID; do
+                tmux kill-window -t "$ID"
+            done
+            ;;
+    esac
+}
+
+ensure_session
+
+reconcile_window Chat \
+    'exec aichat -s termiris_ctx'
+
+reconcile_window Project \
+    '~/.termiris/bin/project-monitor'
+
+reconcile_window Context \
+    '~/.termiris/bin/chat-monitor'
 
 CURRENT="$(tmux display-message -p '#{session_name}')"
 

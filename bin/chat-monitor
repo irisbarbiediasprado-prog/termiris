@@ -1,0 +1,28 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+
+CONTEXT="$HOME/.termiris/cache/context/context.md"
+CHAT="ia_chat:Chat"
+
+[ -f "$CONTEXT" ] || touch "$CONTEXT"
+
+echo "🤖 Chat Monitor iniciado"
+
+inotifywait -m \
+    -e close_write \
+    --format '%w%f' \
+    "$CONTEXT" |
+while IFS= read -r FILE; do
+
+    [ -f "$FILE" ] || continue
+
+    echo "📤 $(basename "$FILE")"
+
+    tmux send-keys -t "$CHAT" C-c
+    sleep 0.1
+    tmux send-keys -l -t "$CHAT" ".file $FILE"
+    tmux send-keys -t "$CHAT" Enter
+
+    echo "✅ Contexto enviado"
+
+done
