@@ -1,0 +1,37 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+
+ROOT="$HOME/.termiris"
+CACHE="$ROOT/cache/context"
+CHANGED="$CACHE/changed-files.txt"
+TIMER="$CACHE/.debounce.pid"
+
+mkdir -p "$CACHE"
+: > "$CHANGED"
+
+echo "👀 Project Monitor iniciado"
+
+trigger_builder() {
+    if [ -f "$TIMER" ]; then
+        PID="$(cat "$TIMER" 2>/dev/null || true)"
+        [ -n "${PID:-}" ] && kill "$PID" 2>/dev/null || true
+    fi
+
+    (
+        sleep 1
+        ~/.termiris/bin/context-builder
+        rm -f "$TIMER"
+    ) &
+    echo $! > "$TIMER"
+}
+
+inotifywait -m -r \
+    -e close_write \
+    -e moved_to \
+    --format '%w%f' \
+    --exclude '(^|/)\.git(/|$)|(^|/)cache(/|$)|(^|/)tmp(/|$)' \
+    "$ROOT" |
+while IFS= read -r FILE; do
+    grep -Fxq "$FILE" "$CHANGED" || echo "$FILE" >> "$CHANGED"
+    trigger_builder
+done

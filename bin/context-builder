@@ -1,72 +1,53 @@
 #!/data/data/com.termux/files/usr/bin/bash
-#
-# context-builder
-#
-# Responsabilidade:
-# Produzir um documento Markdown contendo o contexto atual.
-#
-# Não conhece IA.
-# Não envia mensagens.
-# Não grava estado.
-# Apenas transforma um arquivo em contexto.
-
 set -euo pipefail
 
-FILE="${1:?Uso: $(basename "$0") <arquivo>}"
+ROOT="$HOME/.termiris"
+CACHE="$ROOT/cache/context"
+CHANGED="$CACHE/changed-files.txt"
+OUT="$CACHE/context.md"
 
-[ -f "$FILE" ] || {
-    printf 'Erro: arquivo não encontrado: %s\n' "$FILE" >&2
-    exit 1
-}
+mkdir -p "$CACHE"
 
-LANG=text
+{
+    echo "# Termiris Context"
+    echo
+    echo "Gerado em: $(date)"
+    echo
 
-emit_header() {
-    printf '# Contexto Termiris\n\n'
-    printf '_Gerado em %s_\n\n' "$(date '+%F %T')"
-}
+    if [ ! -s "$CHANGED" ]; then
+        echo "(nenhuma alteração)"
+        exit 0
+    fi
 
-emit_project() {
-    printf '## Projeto\n\n'
-    printf 'Termiris\n\n'
-}
+    sort -u "$CHANGED" | while IFS= read -r FILE; do
+        REL="${FILE#$ROOT/}"
 
-emit_file() {
-    printf '## Arquivo\n\n'
-    realpath "$FILE"
-    printf '\n'
-}
+        echo "## $REL"
+        echo
 
-detect_language() {
-    case "${FILE##*.}" in
-        sh) LANG=bash ;;
-        c|h) LANG=c ;;
-        py) LANG=python ;;
-        js) LANG=javascript ;;
-        lua) LANG=lua ;;
-        md) LANG=markdown ;;
-        vim) LANG=vim ;;
-        json) LANG=json ;;
-        yml|yaml) LANG=yaml ;;
-        *) LANG=text ;;
-    esac
-}
+        if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+            if git -C "$ROOT" ls-files --error-unmatch "$REL" >/dev/null 2>&1; then
+                DIFF="$(git -C "$ROOT" diff -- "$REL")"
+                if [ -n "$DIFF" ]; then
+                    echo '```diff'
+                    printf '%s\n' "$DIFF"
+                    echo '```'
+                else
+                    echo "_Sem diff (arquivo salvo, mas sem mudanças em relação ao Git)._"
+                fi
+            else
+                echo "_Arquivo não versionado._"
+                echo
+                echo '```'
+                cat "$FILE"
+                echo '```'
+            fi
+        fi
 
-emit_language() {
-    printf '## Linguagem\n\n'
-    printf '%s\n\n' "$LANG"
-}
+        echo
+    done
+} > "$OUT"
 
-emit_contents() {
-    printf '## Conteúdo\n\n'
-    printf '```%s\n' "$LANG"
-    cat "$FILE"
-    printf '\n```\n'
-}
+: > "$CHANGED"
 
-detect_language
-emit_header
-emit_project
-emit_file
-emit_language
-emit_contents
+echo "🟢 Contexto atualizado"

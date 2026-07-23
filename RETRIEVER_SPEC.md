@@ -208,3 +208,131 @@ Permitir que agentes naveguem autonomamente por projetos utilizando operações 
 O contexto deixa de ser enviado.
 
 O contexto passa a ser descoberto.
+
+---
+
+# Milestone 2
+
+Objetivo
+
+Validar a recuperação incremental de contexto.
+
+Hipótese
+
+Um agente consegue concluir uma tarefa solicitando apenas o contexto necessário.
+
+Escopo
+
+Implementar apenas:
+
+retrieve(current-file)
+
+Fluxo esperado
+
+Usuário
+
+↓
+
+Tarefa
+
+↓
+
+Agente
+
+↓
+
+retrieve(current-file)
+
+↓
+
+Retriever
+
+↓
+
+Builder(current-file)
+
+↓
+
+Conteúdo do arquivo
+
+↓
+
+Agente
+
+↓
+
+Resposta
+
+Critério de sucesso
+
+- O usuário informa apenas a tarefa.
+- Nenhum arquivo é enviado inicialmente.
+- O agente solicita retrieve(current-file).
+- O Retriever fornece o arquivo.
+- O agente continua a tarefa normalmente.
+
+Não objetivos
+
+- related-files
+- symbol
+- knowledge
+- Patch Engine
+- LangExtract
+
+Esses componentes serão implementados apenas após a validação deste ciclo.
+
+---
+
+## Protocolo de Recuperação
+
+O Retriever é dirigido pelo agente.
+
+O agente decide explicitamente qual contexto deseja recuperar.
+
+O Context Engine nunca infere arquivos adicionais.
+
+Exemplos:
+
+<<RETRIEVE FILE AGENTS.md>>
+
+<<RETRIEVE FILE bin/update_context.sh>>
+
+<<RETRIEVE FILES
+AGENTS.md
+CONTEXT_SPEC.md
+RETRIEVER_SPEC.md
+>>
+
+Fluxo
+
+Agente
+    │
+    ▼
+Solicitação RETRIEVE
+    │
+    ▼
+Monitor
+    │
+    ▼
+retrieve
+    │
+    ▼
+context-builder
+    │
+    ▼
+Conteúdo solicitado
+    │
+    ▼
+Monitor
+    │
+    ▼
+Agente
+
+Princípios
+
+- O agente controla a exploração do contexto.
+- O Context Engine não toma decisões pelo agente.
+- O protocolo deve ser determinístico e auditável.
+- Builders executam apenas a recuperação solicitada.
+- Inteligência pertence ao agente; execução pertence ao Context Engine.
+
