@@ -8,46 +8,117 @@ OUT="$CACHE/context.md"
 
 mkdir -p "$CACHE"
 
-{
-    echo "# Termiris Context"
+usage() {
+    echo "Uso:"
+    echo "  context-builder --push"
+    echo "  context-builder --pull <arquivo...>"
+    exit 1
+}
+
+emit_pull() {
+    local FILE="$1"
+    local REL="${FILE#$ROOT/}"
+
+    [ -f "$FILE" ] || return
+
+    echo "## $REL"
     echo
-    echo "Gerado em: $(date)"
+    echo '```'
+    cat "$FILE"
+    echo '```'
+    echo
+}
+
+emit_push() {
+    local FILE="$1"
+    local REL="${FILE#$ROOT/}"
+
+    [ -f "$FILE" ] || return
+
+    echo "## $REL"
     echo
 
-    if [ ! -s "$CHANGED" ]; then
-        echo "(nenhuma alteração)"
-        exit 0
-    fi
+    if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1 &&
+       git -C "$ROOT" ls-files --error-unmatch "$REL" >/dev/null 2>&1; then
 
-    sort -u "$CHANGED" | while IFS= read -r FILE; do
-        REL="${FILE#$ROOT/}"
+        local DIFF
+        DIFF="$(git -C "$ROOT" diff -- "$REL")"
 
-        echo "## $REL"
-        echo
-
-        if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-            if git -C "$ROOT" ls-files --error-unmatch "$REL" >/dev/null 2>&1; then
-                DIFF="$(git -C "$ROOT" diff -- "$REL")"
-                if [ -n "$DIFF" ]; then
-                    echo '```diff'
-                    printf '%s\n' "$DIFF"
-                    echo '```'
-                else
-                    echo "_Sem diff (arquivo salvo, mas sem mudanças em relação ao Git)._"
-                fi
-            else
-                echo "_Arquivo não versionado._"
-                echo
-                echo '```'
-                cat "$FILE"
-                echo '```'
-            fi
+        if [ -n "$DIFF" ]; then
+            echo '```diff'
+            printf '%s\n' "$DIFF"
+            echo '```'
+        else
+            echo "_Sem alterações em relação ao Git._"
         fi
 
+    else
+        echo "_Arquivo não versionado._"
         echo
-    done
-} > "$OUT"
+        echo '```'
+        cat "$FILE"
+        echo '```'
+    fi
 
-: > "$CHANGED"
+    echo
+}
+
+MODE="${1:-}"
+
+case "$MODE" in
+
+    --pull)
+
+        shift
+
+        {
+            echo "# Termiris Context"
+            echo
+            echo "Gerado em: $(date)"
+            echo
+            echo "## Solicitação"
+            echo
+            echo "Modo: Pull"
+            echo
+
+            for FILE in "$@"; do
+                emit_pull "$FILE"
+            done
+
+        } > "$OUT"
+        ;;
+
+    --push)
+
+        {
+            echo "# Termiris Context"
+            echo
+            echo "Gerado em: $(date)"
+            echo
+            echo "## Atualização automática"
+            echo
+            echo "Modo: Push"
+            echo
+
+            if [ -s "$CHANGED" ]; then
+                sort -u "$CHANGED" |
+                while IFS= read -r FILE; do
+                    emit_push "$FILE"
+                done
+            else
+                echo "(nenhuma alteração)"
+            fi
+
+        } > "$OUT"
+
+        : > "$CHANGED"
+        ;;
+
+    *)
+
+        usage
+        ;;
+
+esac
 
 echo "🟢 Contexto atualizado"

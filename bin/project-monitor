@@ -19,7 +19,7 @@ trigger_builder() {
 
     (
         sleep 1
-        ~/.termiris/bin/context-builder
+        ~/.termiris/bin/context-builder --push
         rm -f "$TIMER"
     ) &
     echo $! > "$TIMER"
