@@ -92,6 +92,18 @@ Nunca crie infraestrutura para problemas hipotéticos.
 
 ---
 
+## Princípio Arquitetural
+
+Arquitetura boa não conecta componentes.
+
+Arquitetura boa conecta artefatos.
+
+Sempre que possível, um componente deve produzir um artefato simples (texto, Markdown, JSON ou stdout) que possa ser consumido por qualquer outro componente.
+
+Essa abordagem reduz acoplamento, facilita testes, aumenta a reutilização e permite que a arquitetura evolua sem modificar o núcleo do sistema.
+
+---
+
 ## Automação
 
 Sempre que identificar uma sequência repetitiva de comandos, considere imediatamente:
@@ -198,6 +210,87 @@ Termux, tmux, Bash, fzf, ripgrep, fd, bat, eza, zoxide, Git, Termux:API (clipboa
 - Configuração distribuída como um conjunto de dotfiles reutilizáveis ("Termiris"), instalável com um único comando.
 - Arquitetura modular, de baixo acoplamento e alta coesão, permitindo adicionar novos módulos sem impactar os existentes.
 - Experiência otimizada para uso em smartphone, com atalhos acessíveis pela barra de teclas extras do Termux e interface baseada em fzf em vez de menus complexos.
+
+---
+
+## Arquitetura de Componentes
+
+Construa pipelines, não scripts.
+
+Todo componente deve possuir uma única responsabilidade e produzir um artefato consumível pelo próximo componente.
+
+A comunicação entre componentes deve ocorrer preferencialmente por artefatos simples (Markdown, JSON, texto ou stdout), e não por acoplamento direto.
+
+Sempre que possível, siga o fluxo:
+
+Evento
+→ Builder
+→ Processors
+→ Sender
+→ Provider
+→ Resposta
+
+### Builders
+
+Builders transformam estado em artefatos.
+
+Eles:
+
+- não conhecem consumidores;
+- não enviam mensagens;
+- não mantêm estado;
+- não dependem de provedores.
+
+Sua única responsabilidade é produzir um artefato.
+
+### Processors
+
+Processors enriquecem artefatos produzidos pelos builders.
+
+Cada processor possui responsabilidade única e pode ser adicionado ou removido sem alterar o builder.
+
+Exemplos futuros:
+
+- langextract
+- git diff
+- análise de símbolos
+- compactação
+- cache
+
+### Senders
+
+Senders apenas entregam artefatos ao destino.
+
+O sender conhece o provedor.
+
+O builder nunca deve conhecer o sender.
+
+### Contratos
+
+Todo componente deve possuir um contrato simples.
+
+Entrada
+↓
+
+Processamento
+↓
+
+Saída
+
+Prefira stdout sempre que possível.
+
+Artefatos são mais importantes que integrações.
+
+Um artefato pode ser:
+
+- salvo;
+- inspecionado;
+- testado;
+- reutilizado;
+- enviado para qualquer provedor.
+
+Uma integração normalmente serve apenas para um caso de uso.
+Um artefato serve para muitos.
 
 ---
 

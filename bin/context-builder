@@ -1,0 +1,72 @@
+#!/data/data/com.termux/files/usr/bin/bash
+#
+# context-builder
+#
+# Responsabilidade:
+# Produzir um documento Markdown contendo o contexto atual.
+#
+# Não conhece IA.
+# Não envia mensagens.
+# Não grava estado.
+# Apenas transforma um arquivo em contexto.
+
+set -euo pipefail
+
+FILE="${1:?Uso: $(basename "$0") <arquivo>}"
+
+[ -f "$FILE" ] || {
+    printf 'Erro: arquivo não encontrado: %s\n' "$FILE" >&2
+    exit 1
+}
+
+LANG=text
+
+emit_header() {
+    printf '# Contexto Termiris\n\n'
+    printf '_Gerado em %s_\n\n' "$(date '+%F %T')"
+}
+
+emit_project() {
+    printf '## Projeto\n\n'
+    printf 'Termiris\n\n'
+}
+
+emit_file() {
+    printf '## Arquivo\n\n'
+    realpath "$FILE"
+    printf '\n'
+}
+
+detect_language() {
+    case "${FILE##*.}" in
+        sh) LANG=bash ;;
+        c|h) LANG=c ;;
+        py) LANG=python ;;
+        js) LANG=javascript ;;
+        lua) LANG=lua ;;
+        md) LANG=markdown ;;
+        vim) LANG=vim ;;
+        json) LANG=json ;;
+        yml|yaml) LANG=yaml ;;
+        *) LANG=text ;;
+    esac
+}
+
+emit_language() {
+    printf '## Linguagem\n\n'
+    printf '%s\n\n' "$LANG"
+}
+
+emit_contents() {
+    printf '## Conteúdo\n\n'
+    printf '```%s\n' "$LANG"
+    cat "$FILE"
+    printf '\n```\n'
+}
+
+detect_language
+emit_header
+emit_project
+emit_file
+emit_language
+emit_contents
