@@ -1,0 +1,90 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+
+ROOT="$HOME/.termiris"
+TEST="$ROOT/protocol/tests/${1:-}.md"
+CACHE="$ROOT/cache/context"
+OUT="$CACHE/context.md"
+
+[ $# -eq 1 ] || {
+    echo "Uso: tp TP-001"
+    exit 1
+}
+
+[ -f "$TEST" ] || {
+    echo "❌ Teste não encontrado: $1"
+    exit 1
+}
+
+mkdir -p "$CACHE"
+
+awk '
+BEGIN { mode="" }
+
+/^## Prompt$/ {
+    mode="prompt"
+    next
+}
+
+/^## Expect$/ {
+    mode=""
+    next
+}
+
+/^## / {
+    mode=""
+}
+
+mode=="prompt" {
+    print
+}
+' "$TEST" > "$OUT"
+
+EXPECT="$(
+awk '
+BEGIN { mode="" }
+
+/^## Expect$/ {
+    mode="expect"
+    next
+}
+
+/^## / {
+    if (mode=="expect") exit
+}
+
+mode=="expect" {
+    print
+}
+' "$TEST" | tr -d "\r" | sed "s/[[:space:]]*$//"
+)"
+
+echo "$EXPECT" > "$CACHE/.tp-expect"
+
+echo
+echo "🧪 Executando $1"
+echo "📤 Contexto enviado automaticamente pelo chat-monitor."
+echo
+echo "Aguarde a IA responder."
+echo
+echo "Cole APENAS a primeira linha:"
+echo
+
+printf "> "
+IFS= read -r RESPONSE
+
+RESPONSE="$(printf '%s' "$RESPONSE" | tr -d '\r' | sed 's/[[:space:]]*$//')"
+
+echo
+
+if [ "$RESPONSE" = "$EXPECT" ]; then
+    echo "✅ PASS"
+else
+    echo "❌ FAIL"
+    echo
+    echo "Esperado:"
+    echo "$EXPECT"
+    echo
+    echo "Recebido:"
+    echo "$RESPONSE"
+fi

@@ -1,0 +1,72 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+
+ROOT="${TERMIRIS_RUNTIME:-$HOME/.termiris/runtime}"
+
+ok(){ printf "🟢 %s\n" "$1"; }
+fail(){ printf "🔴 %s\n" "$1"; }
+
+TMP="$(mktemp -d)"
+trap 'rm -rf "$TMP"' EXIT
+
+export TERMIRIS_RUNTIME="$TMP"
+
+mkdir -p \
+"$TMP/cache/events" \
+"$TMP/cache/reports" \
+"$TMP/cache/sessions" \
+"$TMP/cache/notifications" \
+"$TMP/cache/metrics"
+
+cp -r "$ROOT"/handlers "$TMP"/
+cp "$ROOT"/event-parser "$TMP"/
+cp "$ROOT"/event-bus "$TMP"/
+cp "$ROOT"/runtime "$TMP"/
+
+chmod +x \
+"$TMP/runtime" \
+"$TMP/event-parser" \
+"$TMP/event-bus" \
+"$TMP"/handlers/*
+
+cat > "$TMP/cache/sessions/current" <<'EOT'
+id=TP-001
+expect=SEARCH context-builder
+EOT
+
+printf '%s\n' \
+'texto inicial' \
+'<<RETRIEVE SEARCH context-builder>>' \
+'texto final' |
+"$TMP/runtime" >/dev/null 2>&1 || true
+
+echo
+echo "=== Runtime ==="
+
+[ -f "$TMP/cache/events/.seq" ] \
+&& ok ".seq" \
+|| fail ".seq"
+
+find "$TMP/cache/events" -name '*.event' | grep -q . \
+&& ok "events" \
+|| fail "events"
+
+[ -f "$TMP/cache/sessions/result" ] \
+&& ok "result" \
+|| fail "result"
+
+[ -f "$TMP/cache/reports/TP-001.md" ] \
+&& ok "report" \
+|| fail "report"
+
+find "$TMP/cache/notifications" -name '*.notify' | grep -q . \
+&& ok "notification" \
+|| fail "notification"
+
+[ -f "$TMP/cache/runtime.log" ] \
+&& ok "runtime.log" \
+|| fail "runtime.log"
+
+echo
+echo "=== Tree ==="
+find "$TMP/cache" -type f | sort

@@ -7,34 +7,33 @@ EVENT="$1"
 SESSION="$ROOT/cache/sessions/current"
 RESULT="$ROOT/cache/sessions/result"
 
-mkdir -p "$ROOT/cache/sessions"
-
 [ -f "$SESSION" ] || exit 0
 
-EXPECTED="$(grep '^expect=' "$SESSION" | cut -d= -f2-)"
-
-TYPE=
-VERB=
-ARG=
-
-while IFS='=' read -r K V; do
-    case "$K" in
-        type) TYPE="$V" ;;
-        verb) VERB="$V" ;;
-        arg)  ARG="$V" ;;
-    esac
-done < "$EVENT"
-
+TYPE="$(grep '^type=' "$EVENT" | cut -d= -f2)"
 [ "$TYPE" = "RETRIEVE" ] || exit 0
+
+EXPECTED="$(grep '^expect=' "$SESSION" | cut -d= -f2-)"
+ID="$(grep '^id=' "$EVENT" | cut -d= -f2)"
+VERB="$(grep '^verb=' "$EVENT" | cut -d= -f2)"
+ARG="$(grep '^arg=' "$EVENT" | cut -d= -f2-)"
 
 OBSERVED="$VERB $ARG"
 
 if [ "$OBSERVED" = "$EXPECTED" ]; then
-    echo PASS > "$RESULT"
+    STATUS=PASS
 else
-    {
-        echo FAIL
-        echo "expected=$EXPECTED"
-        echo "observed=$OBSERVED"
-    } > "$RESULT"
+    STATUS=FAIL
 fi
+
+{
+echo "$STATUS"
+echo "event=$ID"
+echo "expected=$EXPECTED"
+echo "observed=$OBSERVED"
+} > "$RESULT"
+
+cat <<EOT
+type=TP_RESULT
+status=$STATUS
+event=$ID
+EOT

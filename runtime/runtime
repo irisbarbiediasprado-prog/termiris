@@ -1,9 +1,19 @@
 #!/data/data/com.termux/files/usr/bin/bash
 set -euo pipefail
 
-ROOT="$HOME/.termiris/runtime"
+ROOT="$(cd "$(dirname "$0")" && pwd)"
 
 export TERMIRIS_RUNTIME="$ROOT"
 
-exec "$ROOT/event-parser" \
-| "$ROOT/event-bus"
+BUS="$ROOT/cache/event.bus"
+
+mkdir -p "$ROOT/cache"/{reports,sessions,notifications,metrics}
+rm -f "$BUS"
+mkfifo "$BUS"
+
+"$ROOT/event-bus" < "$BUS" &
+BUS_PID=$!
+
+trap 'kill "$BUS_PID" 2>/dev/null || true; rm -f "$BUS"' EXIT
+
+exec "$ROOT/event-parser" > "$BUS"

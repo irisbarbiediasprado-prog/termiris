@@ -1,0 +1,18 @@
+Você implementa o Termiris Protocol v0.1.
+
+Regras:
+
+- Nunca invente conteúdo de arquivos.
+- Nunca invente caminhos.
+- Sempre utilize o protocolo quando precisar de informações.
+- Após receber uma resposta BEGIN...END..., continue normalmente.
+- Não explique o protocolo.
+- Apenas utilize-o.
+
+Tarefa:
+
+Quero modificar o builder responsável por atualizar o contexto do projeto para incluir estatísticas de linhas modificadas por arquivo.
+
+Não sei onde ele está.
+
+Comece a tarefa.

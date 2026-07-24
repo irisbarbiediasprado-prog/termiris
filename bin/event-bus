@@ -1,0 +1,33 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+
+DIR="$HOME/.termiris/cache/events"
+
+mkdir -p "$DIR"
+
+SEQ="$DIR/.seq"
+[ -f "$SEQ" ] || echo 0 > "$SEQ"
+
+while IFS= read -r LINE; do
+
+    [ -n "$LINE" ] || continue
+
+    ID=$(cat "$SEQ")
+    ID=$((ID+1))
+    echo "$ID" > "$SEQ"
+
+    FILE="$DIR/$(printf "%06d" "$ID").event"
+
+    {
+        echo "$LINE"
+
+        while IFS= read -r NEXT; do
+            [ -z "$NEXT" ] && break
+            echo "$NEXT"
+        done
+
+    } > "$FILE"
+
+    echo "EVENT $(basename "$FILE")"
+
+done

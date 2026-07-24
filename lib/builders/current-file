@@ -1,0 +1,9 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+
+[ -n "${CURRENT_FILE:-}" ] || {
+    echo "CURRENT_FILE não definido"
+    exit 1
+}
+
+cat "$CURRENT_FILE"

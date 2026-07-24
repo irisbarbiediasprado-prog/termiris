@@ -1,0 +1,38 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+
+while IFS= read -r LINE; do
+
+    case "$LINE" in
+
+        '<<RETRIEVE '*)
+
+            CMD="${LINE#<<RETRIEVE }"
+            CMD="${CMD%%>>}"
+
+            VERB="${CMD%% *}"
+            ARG="${CMD#"$VERB"}"
+            ARG="${ARG# }"
+
+            cat <<EVENT
+type=RETRIEVE
+verb=$VERB
+arg=$ARG
+EVENT
+            ;;
+
+        *)
+
+            [ -n "$LINE" ] || continue
+
+            cat <<EVENT
+type=TEXT
+content=$LINE
+EVENT
+            ;;
+
+    esac
+
+    echo
+
+done

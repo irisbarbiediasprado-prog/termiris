@@ -5,20 +5,18 @@ ROOT="${TERMIRIS_RUNTIME:-$HOME/.termiris/runtime}"
 
 EVENT="$1"
 
+TYPE="$(grep '^type=' "$EVENT" | cut -d= -f2)"
+[ "$TYPE" = "TP_RESULT" ] || exit 0
+
 SESSION="$ROOT/cache/sessions/current"
 RESULT="$ROOT/cache/sessions/result"
+EVENTS="$ROOT/cache/events"
 REPORTS="$ROOT/cache/reports"
 
 mkdir -p "$REPORTS"
 
-[ -f "$SESSION" ] || exit 0
-[ -f "$RESULT" ] || exit 0
-
 TEST="$(grep '^id=' "$SESSION" | cut -d= -f2)"
-[ -n "$TEST" ] || TEST="UNKNOWN"
-
-REPORT="$REPORTS/$TEST.md"
-
+EVENT_ID="$(grep '^event=' "$RESULT" | cut -d= -f2)"
 STATUS="$(head -n1 "$RESULT")"
 
 {
@@ -41,5 +39,5 @@ echo
 echo "----------------------------------------"
 echo
 echo "Event"
-cat "$EVENT"
-} > "$REPORT"
+cat "$EVENTS/$EVENT_ID.event"
+} > "$REPORTS/$TEST.md"

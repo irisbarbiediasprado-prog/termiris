@@ -1,0 +1,36 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+
+PROMPT="${1:-}"
+
+[ -n "$PROMPT" ] || {
+    echo "Uso: kernel <prompt>"
+    exit 1
+}
+
+CONTEXT="$PROMPT"
+
+while :; do
+    RESPONSE="$(printf '%s\n' "$CONTEXT" | aichat -s termiris_ctx)"
+
+    echo "$RESPONSE"
+
+    CALL="$(printf '%s\n' "$RESPONSE" |
+        sed -n 's/^<<RETRIEVE FILE \(.*\)>>$/\1/p' |
+        head -1)"
+
+    [ -n "$CALL" ] || break
+
+    RETRIEVED="$("$HOME/.termiris/bin/retrieve" FILE "$CALL")"
+
+    CONTEXT="$(cat <<EOT
+$CONTEXT
+
+$RESPONSE
+
+$RETRIEVED
+
+Continue a tarefa.
+EOT
+)"
+done

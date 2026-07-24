@@ -1,0 +1,68 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+
+ROOT="$HOME/.termiris"
+PROTO="$ROOT/protocol"
+RUNS="$PROTO/runs"
+
+RUN="$(date +%Y%m%d-%H%M%S)"
+DIR="$RUNS/$RUN"
+
+mkdir -p "$DIR"
+
+for TEST in "$PROTO"/tests/*.md; do
+    NAME="$(basename "$TEST" .md)"
+
+    awk '
+    BEGIN{mode=""}
+
+    /^## Prompt$/    {mode="prompt";next}
+    /^## Critérios$/ {mode="criteria";next}
+    /^## /           {mode=""}
+
+    mode=="prompt"{print}
+    ' "$TEST" \
+    > "$DIR/$NAME.prompt"
+
+    cp "$TEST" "$DIR/$NAME.test"
+
+    : > "$DIR/$NAME.response"
+
+    cat > "$DIR/$NAME.result" <<RESULT
+STATUS: PENDING
+
+Prompt:
+$NAME.prompt
+
+Response:
+$NAME.response
+
+Verdict:
+
+Notes:
+
+RESULT
+done
+
+cat > "$DIR/summary.md" <<SUMMARY
+# TP Certification Run
+
+Run: $RUN
+
+Model:
+
+Started: $(date)
+
+Finished:
+
+Score:
+
+PASS:
+
+FAIL:
+
+SUMMARY
+
+echo "🟢 Run criada: $DIR"
+
+find "$DIR" -maxdepth 1 -type f | sort

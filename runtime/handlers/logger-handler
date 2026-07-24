@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT="${TERMIRIS_RUNTIME:-$HOME/.termiris/runtime}"
 
-LOG="$ROOT/cache/runtime.log"
+mkdir -p "$ROOT/cache"
 
-cat "$1" >> "$LOG"
-printf '\n' >> "$LOG"
+cat "$1" >> "$ROOT/cache/runtime.log"
+printf '\n' >> "$ROOT/cache/runtime.log"

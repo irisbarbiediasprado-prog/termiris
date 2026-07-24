@@ -2,46 +2,75 @@
 set -euo pipefail
 
 ROOT="${TERMIRIS_RUNTIME:-$HOME/.termiris/runtime}"
-
 EVENTS="$ROOT/cache/events"
 
 mkdir -p "$EVENTS"
 
 SEQ="$EVENTS/.seq"
-
 [ -f "$SEQ" ] || echo 0 > "$SEQ"
 
 next_id() {
+    local n
+    n=$(cat "$SEQ")
+    n=$((n+1))
+    echo "$n" > "$SEQ"
+    printf "%06d" "$n"
+}
+
+process_event() {
+
+    local payload="$1"
+
     local id
-    id=$(cat "$SEQ")
-    id=$((id+1))
-    echo "$id" > "$SEQ"
-    printf "%06d" "$id"
+    id="$(next_id)"
+
+    local event="$EVENTS/$id.event"
+
+    {
+        echo "id=$id"
+        printf '%s\n' "$payload"
+    } > "$event"
+
+    for handler in "$ROOT"/handlers/*; do
+        [ -x "$handler" ] || continue
+
+        local block=
+
+        while IFS= read -r line || [ -n "$line" ]; do
+
+            if [ -z "$line" ]; then
+                if [ -n "$block" ]; then
+                    process_event "$block"
+                    block=
+                fi
+                continue
+            fi
+
+            if [ -z "$block" ]; then
+                block="$line"
+            else
+                block="$block"$'\n'"$line"
+            fi
+
+        done < <("$handler" "$event")
+
+        [ -z "$block" ] || process_event "$block"
+
+    done
 }
 
 while :; do
 
-    IFS= read -r LINE || break
+    IFS= read -r line || break
+    [ -n "$line" ] || continue
 
-    [ -n "$LINE" ] || continue
+    payload="$line"
 
-    ID="$(next_id)"
-
-    FILE="$EVENTS/$ID.event"
-
-    {
-        echo "$LINE"
-
-        while IFS= read -r NEXT; do
-            [ -z "$NEXT" ] && break
-            echo "$NEXT"
-        done
-
-    } > "$FILE"
-
-    for HANDLER in "$ROOT"/handlers/*; do
-        [ -x "$HANDLER" ] || continue
-        "$HANDLER" "$FILE" &
+    while IFS= read -r next; do
+        [ -z "$next" ] && break
+        payload="$payload"$'\n'"$next"
     done
+
+    process_event "$payload"
 
 done
