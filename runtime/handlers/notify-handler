@@ -1,0 +1,27 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+
+ROOT="${TERMIRIS_RUNTIME:-$HOME/.termiris/runtime}"
+
+RESULT="$ROOT/cache/sessions/result"
+NOTIFY="$ROOT/cache/notifications"
+
+mkdir -p "$NOTIFY"
+
+[ -f "$RESULT" ] || exit 0
+
+LAST="$(find "$NOTIFY" -name '*.notify' 2>/dev/null | sort | tail -n1)"
+
+if [ -n "$LAST" ] && cmp -s "$RESULT" "$LAST"; then
+    exit 0
+fi
+
+if [ -n "$LAST" ]; then
+    ID="${LAST##*/}"
+    ID="${ID%.notify}"
+    ID=$((10#$ID + 1))
+else
+    ID=1
+fi
+
+cp "$RESULT" "$(printf '%s/%06d.notify' "$NOTIFY" "$ID")"

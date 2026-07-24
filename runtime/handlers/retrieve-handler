@@ -1,0 +1,20 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+
+EVENT="$1"
+
+TYPE=
+VERB=
+ARG=
+
+while IFS='=' read -r K V; do
+    case "$K" in
+        type) TYPE="$V" ;;
+        verb) VERB="$V" ;;
+        arg)  ARG="$V" ;;
+    esac
+done < "$EVENT"
+
+[ "$TYPE" = "RETRIEVE" ] || exit 0
+
+exec ~/.termiris/bin/retrieve "$VERB" "$ARG"

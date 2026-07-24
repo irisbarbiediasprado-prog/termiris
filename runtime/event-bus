@@ -1,0 +1,47 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+
+ROOT="${TERMIRIS_RUNTIME:-$HOME/.termiris/runtime}"
+
+EVENTS="$ROOT/cache/events"
+
+mkdir -p "$EVENTS"
+
+SEQ="$EVENTS/.seq"
+
+[ -f "$SEQ" ] || echo 0 > "$SEQ"
+
+next_id() {
+    local id
+    id=$(cat "$SEQ")
+    id=$((id+1))
+    echo "$id" > "$SEQ"
+    printf "%06d" "$id"
+}
+
+while :; do
+
+    IFS= read -r LINE || break
+
+    [ -n "$LINE" ] || continue
+
+    ID="$(next_id)"
+
+    FILE="$EVENTS/$ID.event"
+
+    {
+        echo "$LINE"
+
+        while IFS= read -r NEXT; do
+            [ -z "$NEXT" ] && break
+            echo "$NEXT"
+        done
+
+    } > "$FILE"
+
+    for HANDLER in "$ROOT"/handlers/*; do
+        [ -x "$HANDLER" ] || continue
+        "$HANDLER" "$FILE" &
+    done
+
+done

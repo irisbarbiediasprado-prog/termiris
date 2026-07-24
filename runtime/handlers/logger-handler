@@ -1,0 +1,9 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+
+ROOT="${TERMIRIS_RUNTIME:-$HOME/.termiris/runtime}"
+
+LOG="$ROOT/cache/runtime.log"
+
+cat "$1" >> "$LOG"
+printf '\n' >> "$LOG"

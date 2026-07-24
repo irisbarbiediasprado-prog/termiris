@@ -1,0 +1,45 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+
+ROOT="${TERMIRIS_RUNTIME:-$HOME/.termiris/runtime}"
+
+EVENT="$1"
+
+SESSION="$ROOT/cache/sessions/current"
+RESULT="$ROOT/cache/sessions/result"
+REPORTS="$ROOT/cache/reports"
+
+mkdir -p "$REPORTS"
+
+[ -f "$SESSION" ] || exit 0
+[ -f "$RESULT" ] || exit 0
+
+TEST="$(grep '^id=' "$SESSION" | cut -d= -f2)"
+[ -n "$TEST" ] || TEST="UNKNOWN"
+
+REPORT="$REPORTS/$TEST.md"
+
+STATUS="$(head -n1 "$RESULT")"
+
+{
+echo "# TP Report"
+echo
+echo "Test: $TEST"
+echo
+echo "Status: $STATUS"
+echo
+echo "----------------------------------------"
+echo
+echo "Session"
+cat "$SESSION"
+echo
+echo "----------------------------------------"
+echo
+echo "Result"
+cat "$RESULT"
+echo
+echo "----------------------------------------"
+echo
+echo "Event"
+cat "$EVENT"
+} > "$REPORT"

@@ -1,0 +1,21 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+
+CHAT="${1:-ia_chat}"
+PIPE="$HOME/.termiris/runtime/.chat.pipe"
+RUNTIME="$HOME/.termiris/runtime/runtime"
+
+mkdir -p "$HOME/.termiris/runtime"
+
+tmux kill-window -t "$CHAT":MITL 2>/dev/null || true
+
+rm -f "$PIPE"
+mkfifo "$PIPE"
+
+tmux new-window -d -t "$CHAT": -n MITL \
+"stdbuf -oL cat '$PIPE' | '$RUNTIME'"
+
+tmux pipe-pane -o -t "$CHAT":Chat "stdbuf -oL cat > '$PIPE'"
+
+echo "🟢 Runtime conectado"
+echo "Chat -> runtime"

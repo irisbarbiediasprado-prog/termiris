@@ -1,0 +1,34 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+
+while IFS= read -r LINE; do
+
+    [ -n "$LINE" ] || continue
+
+    case "$LINE" in
+
+        '<<RETRIEVE '*)
+
+            CMD="${LINE#<<RETRIEVE }"
+            CMD="${CMD%%>>}"
+
+            VERB="${CMD%% *}"
+            ARG="${CMD#"$VERB"}"
+            ARG="${ARG# }"
+
+            printf 'type=RETRIEVE\n'
+            printf 'verb=%s\n' "$VERB"
+            printf 'arg=%s\n' "$ARG"
+            printf '\n'
+            ;;
+
+        *)
+
+            printf 'type=TEXT\n'
+            printf 'content=%s\n' "$LINE"
+            printf '\n'
+            ;;
+
+    esac
+
+done
