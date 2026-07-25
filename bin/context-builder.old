@@ -1,0 +1,57 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+
+ROOT="${TERMIRIS_RUNTIME:-$HOME/.termiris/runtime}"
+STORE="$ROOT/cache/context"
+INDEX="$STORE/index"
+
+mkdir -p "$STORE"
+touch "$INDEX"
+
+new_id() {
+    printf '%06d' "$(($(wc -l < "$INDEX")+1))"
+}
+
+case "${1:-}" in
+
+merge)
+
+shift
+
+[ "$#" -ge 2 ] || {
+    echo "usage: context-builder merge <parent...> <payload.ctx>"
+    exit 1
+}
+
+PAYLOAD="${!#}"
+PARENTS=("${@:1:$(($#-1))}")
+
+ID="$(new_id)"
+
+SHA="$(sha256sum "$PAYLOAD" | cut -d' ' -f1)"
+
+{
+    echo "id: $ID"
+    echo "sha256: $SHA"
+
+    printf "parents:"
+    for P in "${PARENTS[@]}"; do
+        printf " %s" "$P"
+    done
+    echo
+    echo
+
+    cat "$PAYLOAD"
+} > "$STORE/$ID.ctx"
+
+printf '%s %s\n' "$ID" "$SHA" >> "$INDEX"
+
+echo "$ID"
+;;
+
+*)
+
+exec "$HOME/.termiris/bin/context-builder.old" "$@"
+;;
+
+esac

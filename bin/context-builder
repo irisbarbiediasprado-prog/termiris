@@ -3,81 +3,73 @@ set -euo pipefail
 
 ROOT="${TERMIRIS_RUNTIME:-$HOME/.termiris/runtime}"
 STORE="$ROOT/cache/context"
-INDEX="$STORE/index"
 
 mkdir -p "$STORE"
-touch "$INDEX"
 
 usage() {
 cat <<USAGE
 Usage:
-  context-builder push <arquivo.ctx> [parent...]
+  context-builder push <payload.ctx> [parent...]
   context-builder get <id>
   context-builder list
-  context-builder verify <id>
   context-builder graph <id>
+  context-builder verify <id>
 USAGE
+}
+
+calc_id() {
+    sha256sum "$1" | awk '{print $1}'
 }
 
 graph() {
     local ID="$1"
     local PREFIX="${2:-}"
+    local FILE="$STORE/$ID.ctx"
 
-    [ -f "$STORE/$ID.ctx" ] || return
+    [ -f "$FILE" ] || return
 
-    echo "${PREFIX}${ID}"
+    echo "${PREFIX}${ID:0:12}"
 
-    local PARENTS
-    PARENTS="$(
-        awk '
-        /^parents:/{
-            for(i=2;i<=NF;i++) print $i
-        }' "$STORE/$ID.ctx"
-    )"
-
-    [ -z "$PARENTS" ] && return
-
-    while IFS= read -r P; do
+    awk '
+    /^parents:/{
+        for(i=2;i<=NF;i++) print $i
+    }' "$FILE" |
+    while read -r P; do
         [ -n "$P" ] || continue
         graph "$P" "  "
-    done <<< "$PARENTS"
+    done
 }
 
 case "${1:-}" in
 
 push)
 
-CTX="$2"
+PAYLOAD="$2"
 shift 2
 
-SHA="$(sha256sum "$CTX" | cut -d' ' -f1)"
+TMP="$(mktemp)"
 
-if grep -q " $SHA$" "$INDEX"; then
-    awk -v sha="$SHA" '$2==sha{print $1;exit}' "$INDEX"
-    exit 0
-fi
+{
+    echo "version: 1"
 
-ID=$(printf '%06d' "$(($(wc -l < "$INDEX")+1))")
+    printf "parents:"
+    for P in "$@"; do
+        printf " %s" "$P"
+    done
+    echo
+    echo
+
+    cat "$PAYLOAD"
+} > "$TMP"
+
+ID="$(calc_id "$TMP")"
 
 {
     echo "id: $ID"
-    echo "sha256: $SHA"
-
-    if [ "$#" -gt 0 ]; then
-        printf 'parents:'
-        for P in "$@"; do
-            printf ' %s' "$P"
-        done
-        echo
-    else
-        echo "parents:"
-    fi
-
-    echo
-    cat "$CTX"
+    cat "$TMP"
 } > "$STORE/$ID.ctx"
 
-printf '%s %s\n' "$ID" "$SHA" >> "$INDEX"
+rm -f "$TMP"
 
 echo "$ID"
 ;;
@@ -89,26 +81,27 @@ cat "$STORE/$2.ctx"
 
 list)
 
-cat "$INDEX"
-;;
-
-verify)
-
-REAL="$(sha256sum "$STORE/$2.ctx" | cut -d' ' -f1)"
-STORED="$(awk -v id="$2" '$1==id{print $2}' "$INDEX")"
-
-[ "$REAL" = "$STORED" ] && {
-    echo PASS
-    exit 0
-}
-
-echo FAIL
-exit 1
+find "$STORE" -maxdepth 1 -name '*.ctx' \
+| xargs -n1 basename \
+| sed 's/\.ctx$//' \
+| sort
 ;;
 
 graph)
 
 graph "$2"
+;;
+
+verify)
+
+REAL="$(calc_id "$STORE/$2.ctx")"
+
+if [ "$REAL" = "$2" ]; then
+    echo PASS
+else
+    echo FAIL
+    exit 1
+fi
 ;;
 
 *)
