@@ -2,36 +2,73 @@
 set -euo pipefail
 
 ROOT="${TERMIRIS_RUNTIME:-$HOME/.termiris/runtime}"
-CTX="$ROOT/cache/context"
+STORE="$ROOT/cache/context"
 
-mkdir -p "$CTX"
+mkdir -p "$STORE"
+
+INDEX="$STORE/index"
+
+touch "$INDEX"
+
+usage() {
+cat <<USAGE
+Usage:
+  context-builder push <arquivo.ctx>
+  context-builder get <id>
+  context-builder list
+  context-builder verify <id>
+USAGE
+}
 
 case "${1:-}" in
 
---pack)
+push)
 
-shift
+CTX="$2"
 
-ID=$(printf '%06d' "$(($(ls "$CTX" 2>/dev/null | wc -l)+1))")
+SHA="$(sha256sum "$CTX" | cut -d' ' -f1)"
 
-cat > "$CTX/$ID.ctx"
+if grep -q " $SHA$" "$INDEX"; then
+    cut -d' ' -f1 "$INDEX" | grep "$(grep " $SHA$" "$INDEX" | cut -d' ' -f1)"
+    exit 0
+fi
 
-echo "$CTX/$ID.ctx"
+ID=$(printf '%06d' "$(($(wc -l < "$INDEX")+1))")
+
+cp "$CTX" "$STORE/$ID.ctx"
+
+printf '%s %s\n' "$ID" "$SHA" >> "$INDEX"
+
+echo "$ID"
 ;;
 
---payload)
+get)
 
-awk '
-/^payload:[[:space:]]*\|/{f=1;next}
-f{print}
-' "$2"
+cat "$STORE/$2.ctx"
+;;
+
+list)
+
+cat "$INDEX"
+;;
+
+verify)
+
+SHA1="$(sha256sum "$STORE/$2.ctx" | cut -d' ' -f1)"
+SHA2="$(awk -v id="$2" '$1==id{print $2}' "$INDEX")"
+
+[ "$SHA1" = "$SHA2" ] && {
+    echo PASS
+    exit 0
+}
+
+echo FAIL
+exit 1
 ;;
 
 *)
 
-echo "usage:"
-echo "  context-builder --pack"
-echo "  context-builder --payload arquivo.ctx"
+usage
 exit 1
 ;;
 
