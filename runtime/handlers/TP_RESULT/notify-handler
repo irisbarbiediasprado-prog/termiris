@@ -3,14 +3,19 @@ set -euo pipefail
 
 ROOT="${TERMIRIS_RUNTIME:-$HOME/.termiris/runtime}"
 
-EVENT="$1"
-
-TYPE="$(grep '^type=' "$EVENT" | cut -d= -f2)"
-[ "$TYPE" = "TP_RESULT" ] || exit 0
-
 SESSION="$ROOT/cache/sessions"
 NOTIFY="$ROOT/cache/notifications"
 
+CTX="$SESSION/context.ctx"
+
+[ -f "$CTX" ] || exit 0
+
 mkdir -p "$NOTIFY"
 
-cp "$SESSION/result.event" "$NOTIFY/$(date +%s).notify"
+ID="$(date +%s)"
+
+cp "$CTX" "$NOTIFY/$ID.notify"
+
+printf 'notification=%s\ncontext=%s\n' \
+"$ID" \
+"$CTX" > "$NOTIFY/$ID.meta"
