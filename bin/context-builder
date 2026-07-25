@@ -7,13 +7,12 @@ STORE="$ROOT/cache/context"
 mkdir -p "$STORE"
 
 INDEX="$STORE/index"
-
 touch "$INDEX"
 
 usage() {
 cat <<USAGE
 Usage:
-  context-builder push <arquivo.ctx>
+  context-builder push <arquivo.ctx> [parent...]
   context-builder get <id>
   context-builder list
   context-builder verify <id>
@@ -25,17 +24,34 @@ case "${1:-}" in
 push)
 
 CTX="$2"
+shift 2
 
 SHA="$(sha256sum "$CTX" | cut -d' ' -f1)"
 
 if grep -q " $SHA$" "$INDEX"; then
-    cut -d' ' -f1 "$INDEX" | grep "$(grep " $SHA$" "$INDEX" | cut -d' ' -f1)"
+    awk -v sha="$SHA" '$2==sha{print $1;exit}' "$INDEX"
     exit 0
 fi
 
 ID=$(printf '%06d' "$(($(wc -l < "$INDEX")+1))")
 
-cp "$CTX" "$STORE/$ID.ctx"
+{
+    echo "id: $ID"
+    echo "sha256: $SHA"
+
+    if [ "$#" -gt 0 ]; then
+        printf 'parents:'
+        for P in "$@"; do
+            printf ' %s' "$P"
+        done
+        echo
+    else
+        echo "parents:"
+    fi
+
+    echo
+    cat "$CTX"
+} > "$STORE/$ID.ctx"
 
 printf '%s %s\n' "$ID" "$SHA" >> "$INDEX"
 
@@ -54,10 +70,10 @@ cat "$INDEX"
 
 verify)
 
-SHA1="$(sha256sum "$STORE/$2.ctx" | cut -d' ' -f1)"
-SHA2="$(awk -v id="$2" '$1==id{print $2}' "$INDEX")"
+REAL="$(sha256sum "$STORE/$2.ctx" | cut -d' ' -f1)"
+STORED="$(awk -v id="$2" '$1==id{print $2}' "$INDEX")"
 
-[ "$SHA1" = "$SHA2" ] && {
+[ "$REAL" = "$STORED" ] && {
     echo PASS
     exit 0
 }
