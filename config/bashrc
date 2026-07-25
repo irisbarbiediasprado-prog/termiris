@@ -39,3 +39,7 @@ _fzf_termiris_history() {
 }
 
 bind -x '"\C-r":_fzf_termiris_history'
+export JAVA_HOME=/data/data/com.termux/files/usr/lib/jvm/java-17-openjdk
+export ANDROID_HOME=/data/data/com.termux/files/usr/share/android-sdk
+export ANDROID_HOME=/data/data/com.termux/files/home/android-sdk
+export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin

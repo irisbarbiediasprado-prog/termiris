@@ -15,20 +15,18 @@ reconcile_window() {
     local CMD="$2"
 
     local IDS
-    IDS="$(tmux list-windows -t "$CHAT" -F '#{window_id} #{window_name}' \
-        | awk -v n="$NAME" '$2==n{print $1}')"
+    IDS="$(tmux list-windows -t "$CHAT" -F '#{window_id} #{window_name}' |
+        awk -v n="$NAME" '$2==n{print $1}')"
 
     local COUNT
     COUNT="$(printf '%s\n' "$IDS" | sed '/^$/d' | wc -l)"
 
     case "$COUNT" in
-        0)
-            tmux new-window -d -t "$CHAT:" -n "$NAME" "$CMD"
-            ;;
-        1)
-            ;;
+        0) tmux new-window -d -t "$CHAT:" -n "$NAME" "$CMD" ;;
+        1) ;;
         *)
-            printf '%s\n' "$IDS" | tail -n +2 | while read -r ID; do
+            printf '%s\n' "$IDS" | tail -n +2 |
+            while read -r ID; do
                 tmux kill-window -t "$ID"
             done
             ;;
@@ -46,6 +44,9 @@ reconcile_window Project \
 reconcile_window Context \
     '~/.termiris/bin/chat-monitor'
 
+reconcile_window MITL \
+    '~/.termiris/bin/spike-mitl'
+
 CURRENT="$(tmux display-message -p '#{session_name}')"
 
 if [ "$CURRENT" = "$CHAT" ]; then
@@ -54,4 +55,4 @@ else
     tmux switch-client -t "$CHAT"
 fi
 
-tmux display-message "🤖 $(tmux display-message -p '#{session_name}')"
+tmux display-message "🤖 $(tmux display-message -p "#{session_name}")"
