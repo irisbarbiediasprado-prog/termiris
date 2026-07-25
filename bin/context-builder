@@ -1,83 +1,38 @@
 #!/data/data/com.termux/files/usr/bin/bash
 set -euo pipefail
 
-ROOT="${TERMIRIS_ROOT:-$HOME/.termiris}"
-OUT="$ROOT/cache/context.md"
+ROOT="${TERMIRIS_RUNTIME:-$HOME/.termiris/runtime}"
+CTX="$ROOT/cache/context"
 
-usage() {
-cat <<USAGE
-Uso:
-  context-builder SEARCH <texto>
-  context-builder FILE <arquivo...>
+mkdir -p "$CTX"
 
-  context-builder --pull <arquivo...>
-  context-builder --push
-USAGE
-exit 1
-}
+case "${1:-}" in
 
-emit_file() {
-    local FILE="$1"
+--pack)
 
-    [ -f "$ROOT/$FILE" ] || return
+shift
 
-    echo "FILE: $FILE"
-    echo
-    cat "$ROOT/$FILE"
-    echo
-}
+ID=$(printf '%06d' "$(($(ls "$CTX" 2>/dev/null | wc -l)+1))")
 
-MODE="${1:-}"
-shift || true
+cat > "$CTX/$ID.ctx"
 
-case "$MODE" in
-
-SEARCH)
-
-QUERY="$*"
-
-{
-    fd --hidden --follow "$QUERY" "$ROOT" 2>/dev/null
-    rg -l --hidden --glob '!.git' "$QUERY" "$ROOT" 2>/dev/null
-} | sed "s|^$ROOT/||" | sort -u
-
+echo "$CTX/$ID.ctx"
 ;;
 
-FILE)
+--payload)
 
-for FILE in "$@"; do
-    emit_file "$FILE"
-done
-
-;;
-
---pull)
-
-{
-    echo "# Termiris Context"
-    echo
-    echo "Gerado em: $(date)"
-    echo
-
-    for FILE in "$@"; do
-        emit_file "$FILE"
-    done
-
-} > "$OUT"
-
-echo "🟢 Contexto atualizado"
-
-;;
-
---push)
-
-"$ROOT/bin/changed-files" | xargs "$0" --pull
-
+awk '
+/^payload:[[:space:]]*\|/{f=1;next}
+f{print}
+' "$2"
 ;;
 
 *)
 
-usage
+echo "usage:"
+echo "  context-builder --pack"
+echo "  context-builder --payload arquivo.ctx"
+exit 1
 ;;
 
 esac

@@ -3,6 +3,10 @@ set -euo pipefail
 
 EVENT="$1"
 
+ROOT="${TERMIRIS_RUNTIME:-$HOME/.termiris/runtime}"
+CTX="$ROOT/cache/context"
+mkdir -p "$CTX"
+
 TYPE=
 VERB=
 ARG=
@@ -11,16 +15,34 @@ while IFS='=' read -r K V; do
     case "$K" in
         type) TYPE="$V" ;;
         verb) VERB="$V" ;;
-        arg)  ARG="$V" ;;
+        arg) ARG="$V" ;;
     esac
 done < "$EVENT"
 
 [ "$TYPE" = "RETRIEVE" ] || exit 0
 
-RESULT="$("$HOME/.termiris/bin/retrieve" "$VERB" "$ARG")"
+PAYLOAD="$("$HOME/.termiris/bin/retrieve" "$VERB" "$ARG")"
+
+N=$(($(find "$CTX" -name '*.ctx' 2>/dev/null | wc -l)+1))
+ID=$(printf '%06d' "$N")
+FILE="$CTX/$ID.ctx"
+
+cat > "$FILE" <<EOT
+version: 1
+session: $(grep '^id=' "$ROOT/cache/sessions/current" | cut -d= -f2)
+producer: retrieve-handler
+timestamp: $(date -Iseconds)
+
+metadata:
+  verb: $VERB
+  arg: $ARG
+
+payload: |
+$(printf '%s\n' "$PAYLOAD" | sed 's/^/  /')
+EOT
 
 cat <<EOT
 type=TP_RESULT
 status=PASS
-payload=$RESULT
+context=$FILE
 EOT
