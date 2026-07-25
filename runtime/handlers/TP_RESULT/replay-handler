@@ -1,2 +1,17 @@
 #!/data/data/com.termux/files/usr/bin/bash
-exit 0
+set -euo pipefail
+
+ROOT="${TERMIRIS_RUNTIME:-$HOME/.termiris/runtime}"
+
+SESSION="$ROOT/cache/sessions"
+
+CTX="$SESSION/context.ctx"
+OUT="$ROOT/cache/replay.last"
+
+[ -f "$CTX" ] || exit 0
+
+awk '
+BEGIN{p=0}
+/^payload:[[:space:]]*\|/{p=1;next}
+p{sub(/^  /,"");print}
+' "$CTX" > "$OUT"
