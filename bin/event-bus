@@ -1,5 +1,6 @@
 #!/data/data/com.termux/files/usr/bin/bash
 set -euo pipefail
+echo "BOOT" >> "$ROOT/cache/event-bus.debug"
 
 DIR="$HOME/.termiris/cache/events"
 

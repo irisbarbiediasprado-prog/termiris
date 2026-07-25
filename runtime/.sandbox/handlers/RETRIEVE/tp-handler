@@ -1,0 +1,39 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+
+ROOT="${TERMIRIS_RUNTIME:-$HOME/.termiris/runtime}"
+
+EVENT="$1"
+SESSION="$ROOT/cache/sessions/current"
+RESULT="$ROOT/cache/sessions/result"
+
+[ -f "$SESSION" ] || exit 0
+
+TYPE="$(grep '^type=' "$EVENT" | cut -d= -f2)"
+[ "$TYPE" = "RETRIEVE" ] || exit 0
+
+EXPECTED="$(grep '^expect=' "$SESSION" | cut -d= -f2-)"
+ID="$(grep '^id=' "$EVENT" | cut -d= -f2)"
+VERB="$(grep '^verb=' "$EVENT" | cut -d= -f2)"
+ARG="$(grep '^arg=' "$EVENT" | cut -d= -f2-)"
+
+OBSERVED="$VERB $ARG"
+
+if [ "$OBSERVED" = "$EXPECTED" ]; then
+    STATUS=PASS
+else
+    STATUS=FAIL
+fi
+
+{
+echo "$STATUS"
+echo "event=$ID"
+echo "expected=$EXPECTED"
+echo "observed=$OBSERVED"
+} > "$RESULT"
+
+cat <<EOT
+type=TP_RESULT
+status=$STATUS
+event=$ID
+EOT

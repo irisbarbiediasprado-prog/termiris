@@ -1,0 +1,33 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+
+ROOT="$HOME/.termiris/runtime"
+SANDBOX="$ROOT/.sandbox"
+
+rm -rf "$SANDBOX"
+mkdir -p "$SANDBOX"
+
+cp "$ROOT/runtime" "$SANDBOX/"
+cp "$ROOT/event-parser" "$SANDBOX/"
+cp "$ROOT/event-bus" "$SANDBOX/"
+cp -r "$ROOT/handlers" "$SANDBOX/"
+
+mkdir -p "$SANDBOX/cache"/{events,sessions,reports,notifications,metrics}
+: > "$SANDBOX/cache/events/.seq"
+
+chmod +x \
+"$SANDBOX/runtime" \
+"$SANDBOX/event-parser" \
+"$SANDBOX/event-bus" \
+"$SANDBOX"/handlers/*
+
+export TERMIRIS_RUNTIME="$SANDBOX"
+
+printf '%s\n' \
+'texto' \
+'<<RETRIEVE SEARCH context-builder>>' |
+"$SANDBOX/runtime"
+
+echo
+echo "===== CACHE ====="
+find "$SANDBOX/cache" -type f | sort

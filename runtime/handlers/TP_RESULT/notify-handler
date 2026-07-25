@@ -1,0 +1,16 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+
+ROOT="${TERMIRIS_RUNTIME:-$HOME/.termiris/runtime}"
+
+EVENT="$1"
+
+TYPE="$(grep '^type=' "$EVENT" | cut -d= -f2)"
+[ "$TYPE" = "TP_RESULT" ] || exit 0
+
+SESSION="$ROOT/cache/sessions"
+NOTIFY="$ROOT/cache/notifications"
+
+mkdir -p "$NOTIFY"
+
+cp "$SESSION/result.event" "$NOTIFY/$(date +%s).notify"

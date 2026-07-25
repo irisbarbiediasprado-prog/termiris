@@ -1,33 +1,19 @@
 #!/data/data/com.termux/files/usr/bin/bash
 set -euo pipefail
 
-ROOT="${TERMIRIS_RUNTIME:-$HOME/.termiris/runtime}"
-
-ok(){ printf "🟢 %s\n" "$1"; }
-fail(){ printf "🔴 %s\n" "$1"; }
-
+ROOT="$HOME/.termiris/runtime"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
+cp "$ROOT"/{runtime,event-bus,event-parser} "$TMP/"
+cp -r "$ROOT/handlers" "$TMP/"
+
+mkdir -p "$TMP/cache"/{events,reports,sessions,notifications,metrics}
+: > "$TMP/cache/events/.seq"
+
+find "$TMP" -type f -exec chmod +x {} +
+
 export TERMIRIS_RUNTIME="$TMP"
-
-mkdir -p \
-"$TMP/cache/events" \
-"$TMP/cache/reports" \
-"$TMP/cache/sessions" \
-"$TMP/cache/notifications" \
-"$TMP/cache/metrics"
-
-cp -r "$ROOT"/handlers "$TMP"/
-cp "$ROOT"/event-parser "$TMP"/
-cp "$ROOT"/event-bus "$TMP"/
-cp "$ROOT"/runtime "$TMP"/
-
-chmod +x \
-"$TMP/runtime" \
-"$TMP/event-parser" \
-"$TMP/event-bus" \
-"$TMP"/handlers/*
 
 cat > "$TMP/cache/sessions/current" <<'EOT'
 id=TP-001
@@ -40,33 +26,35 @@ printf '%s\n' \
 'texto final' |
 "$TMP/runtime" >/dev/null 2>&1 || true
 
+ok(){ printf "🟢 %s\n" "$1"; }
+fail(){ printf "🔴 %s\n" "$1"; }
+
 echo
 echo "=== Runtime ==="
 
-[ -f "$TMP/cache/events/.seq" ] \
-&& ok ".seq" \
-|| fail ".seq"
-
-find "$TMP/cache/events" -name '*.event' | grep -q . \
-&& ok "events" \
-|| fail "events"
-
-[ -f "$TMP/cache/sessions/result" ] \
-&& ok "result" \
-|| fail "result"
-
-[ -f "$TMP/cache/reports/TP-001.md" ] \
-&& ok "report" \
-|| fail "report"
-
-find "$TMP/cache/notifications" -name '*.notify' | grep -q . \
-&& ok "notification" \
-|| fail "notification"
-
-[ -f "$TMP/cache/runtime.log" ] \
-&& ok "runtime.log" \
-|| fail "runtime.log"
+[ -f "$TMP/cache/events/.seq" ] && ok ".seq" || fail ".seq"
+find "$TMP/cache/events" -name '*.event' | grep -q . && ok "events" || fail "events"
+[ -f "$TMP/cache/sessions/result.event" ] && ok "result" || fail "result"
+[ -f "$TMP/cache/reports/TP-001.md" ] && ok "report" || fail "report"
+find "$TMP/cache/notifications" -name '*.notify' | grep -q . && ok "notification" || fail "notification"
+[ -f "$TMP/cache/runtime.log" ] && ok "runtime.log" || fail "runtime.log"
 
 echo
 echo "=== Tree ==="
 find "$TMP/cache" -type f | sort
+
+echo
+echo "=== Runtime Trace ==="
+if [ -f "$TMP/cache/runtime.trace" ]; then
+    cat "$TMP/cache/runtime.trace"
+else
+    echo "<sem trace>"
+fi
+
+echo
+echo "=== Event Bus Trace ==="
+if [ -f "$TMP/cache/event-bus.debug" ]; then
+    cat "$TMP/cache/event-bus.debug"
+else
+    echo "<sem trace>"
+fi

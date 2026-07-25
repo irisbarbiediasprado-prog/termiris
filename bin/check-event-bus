@@ -1,53 +1,32 @@
 #!/data/data/com.termux/files/usr/bin/bash
 set -euo pipefail
 
-ROOT="${TERMIRIS_RUNTIME:-$HOME/.termiris/runtime}"
-TMP="$(mktemp -d)"
-trap 'rm -rf "$TMP"' EXIT
+ROOT="$HOME/.termiris/runtime"
+SB="$ROOT/.sandbox"
 
-export TERMIRIS_RUNTIME="$TMP"
+rm -rf "$SB"
+mkdir -p "$SB/cache/events"
 
-mkdir -p "$TMP"
+cp "$ROOT/event-bus" "$SB/"
+cp -r "$ROOT/handlers" "$SB/"
 
-cp "$ROOT"/runtime "$TMP"/
-cp "$ROOT"/event-parser "$TMP"/
-cp "$ROOT"/event-bus "$TMP"/
-cp -r "$ROOT"/handlers "$TMP"/
-cp -r "$ROOT"/fixtures "$TMP"/
+find "$SB" -type f -exec chmod +x {} +
 
-chmod +x \
-    "$TMP/runtime" \
-    "$TMP/event-parser" \
-    "$TMP/event-bus" \
-    "$TMP"/handlers/*
+: > "$SB/cache/events/.seq"
 
-cp -r "$TMP/fixtures/tp-pass/cache" "$TMP/"
+export TERMIRIS_RUNTIME="$SB"
+export TERMIRIS_DEBUG=1
 
 printf '%s\n' \
-'type=RETRIEVE' \
-'verb=SEARCH' \
-'arg=context-builder' \
-|
-"$TMP/event-bus"
+'id=000001' \
+'type=TEXT' \
+'content=teste' |
+"$SB/event-bus"
 
 echo
-echo "========== CHECK EVENT BUS =========="
-
-check() {
-    if [ -e "$2" ]; then
-        printf "🟢 %-14s %s\n" "$1" "$2"
-    else
-        printf "🔴 %-14s %s\n" "$1" "$2"
-    fi
-}
-
-check "EVENT-1" "$TMP/cache/events/000001.event"
-check "EVENT-2" "$TMP/cache/events/000002.event"
-check "RESULT"  "$TMP/cache/sessions/result"
-check "REPORT"  "$TMP/cache/reports/TP-001.md"
-check "NOTIFY"  "$(find "$TMP/cache/notifications" -type f 2>/dev/null | head -1)"
-check "LOG"     "$TMP/cache/runtime.log"
+echo "=== TREE ==="
+find "$SB" -type f | sort
 
 echo
-echo "========== TREE =========="
-find "$TMP/cache" -type f | sort
+echo "=== DEBUG ==="
+cat "$SB/cache/event-bus.debug"

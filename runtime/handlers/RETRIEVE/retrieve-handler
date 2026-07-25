@@ -17,4 +17,10 @@ done < "$EVENT"
 
 [ "$TYPE" = "RETRIEVE" ] || exit 0
 
-exec ~/.termiris/bin/retrieve "$VERB" "$ARG"
+RESULT="$("$HOME/.termiris/bin/retrieve" "$VERB" "$ARG")"
+
+cat <<EOT
+type=TP_RESULT
+status=PASS
+payload=$RESULT
+EOT

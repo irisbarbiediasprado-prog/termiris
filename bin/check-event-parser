@@ -1,0 +1,13 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+
+ROOT="$HOME/.termiris/runtime"
+
+printf '%s\n' \
+'texto inicial' \
+'<<RETRIEVE SEARCH context-builder>>' \
+'texto final' |
+"$ROOT/event-parser"
+
+echo
+echo "rc=$?"

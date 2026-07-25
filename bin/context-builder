@@ -1,124 +1,83 @@
 #!/data/data/com.termux/files/usr/bin/bash
 set -euo pipefail
 
-ROOT="$HOME/.termiris"
-CACHE="$ROOT/cache/context"
-CHANGED="$CACHE/changed-files.txt"
-OUT="$CACHE/context.md"
-
-mkdir -p "$CACHE"
+ROOT="${TERMIRIS_ROOT:-$HOME/.termiris}"
+OUT="$ROOT/cache/context.md"
 
 usage() {
-    echo "Uso:"
-    echo "  context-builder --push"
-    echo "  context-builder --pull <arquivo...>"
-    exit 1
+cat <<USAGE
+Uso:
+  context-builder SEARCH <texto>
+  context-builder FILE <arquivo...>
+
+  context-builder --pull <arquivo...>
+  context-builder --push
+USAGE
+exit 1
 }
 
-emit_pull() {
+emit_file() {
     local FILE="$1"
-    local REL="${FILE#$ROOT/}"
 
-    [ -f "$FILE" ] || return
+    [ -f "$ROOT/$FILE" ] || return
 
-    echo "## $REL"
+    echo "FILE: $FILE"
     echo
-    echo '```'
-    cat "$FILE"
-    echo '```'
-    echo
-}
-
-emit_push() {
-    local FILE="$1"
-    local REL="${FILE#$ROOT/}"
-
-    [ -f "$FILE" ] || return
-
-    echo "## $REL"
-    echo
-
-    if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1 &&
-       git -C "$ROOT" ls-files --error-unmatch "$REL" >/dev/null 2>&1; then
-
-        local DIFF
-        DIFF="$(git -C "$ROOT" diff -- "$REL")"
-
-        if [ -n "$DIFF" ]; then
-            echo '```diff'
-            printf '%s\n' "$DIFF"
-            echo '```'
-        else
-            echo "_Sem alterações em relação ao Git._"
-        fi
-
-    else
-        echo "_Arquivo não versionado._"
-        echo
-        echo '```'
-        cat "$FILE"
-        echo '```'
-    fi
-
+    cat "$ROOT/$FILE"
     echo
 }
 
 MODE="${1:-}"
+shift || true
 
 case "$MODE" in
 
-    --pull)
+SEARCH)
 
-        shift
+QUERY="$*"
 
-        {
-            echo "# Termiris Context"
-            echo
-            echo "Gerado em: $(date)"
-            echo
-            echo "## Solicitação"
-            echo
-            echo "Modo: Pull"
-            echo
+{
+    fd --hidden --follow "$QUERY" "$ROOT" 2>/dev/null
+    rg -l --hidden --glob '!.git' "$QUERY" "$ROOT" 2>/dev/null
+} | sed "s|^$ROOT/||" | sort -u
 
-            for FILE in "$@"; do
-                emit_pull "$FILE"
-            done
+;;
 
-        } > "$OUT"
-        ;;
+FILE)
 
-    --push)
+for FILE in "$@"; do
+    emit_file "$FILE"
+done
 
-        {
-            echo "# Termiris Context"
-            echo
-            echo "Gerado em: $(date)"
-            echo
-            echo "## Atualização automática"
-            echo
-            echo "Modo: Push"
-            echo
+;;
 
-            if [ -s "$CHANGED" ]; then
-                sort -u "$CHANGED" |
-                while IFS= read -r FILE; do
-                    emit_push "$FILE"
-                done
-            else
-                echo "(nenhuma alteração)"
-            fi
+--pull)
 
-        } > "$OUT"
+{
+    echo "# Termiris Context"
+    echo
+    echo "Gerado em: $(date)"
+    echo
 
-        : > "$CHANGED"
-        ;;
+    for FILE in "$@"; do
+        emit_file "$FILE"
+    done
 
-    *)
-
-        usage
-        ;;
-
-esac
+} > "$OUT"
 
 echo "🟢 Contexto atualizado"
+
+;;
+
+--push)
+
+"$ROOT/bin/changed-files" | xargs "$0" --pull
+
+;;
+
+*)
+
+usage
+;;
+
+esac

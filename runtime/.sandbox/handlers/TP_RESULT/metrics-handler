@@ -1,0 +1,19 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+
+ROOT="${TERMIRIS_RUNTIME:-$HOME/.termiris/runtime}"
+
+EVENT="$1"
+METRICS="$ROOT/cache/metrics"
+
+mkdir -p "$METRICS"
+
+TYPE="$(grep '^type=' "$EVENT" | cut -d= -f2)"
+
+TOTAL="$METRICS/total"
+[ -f "$TOTAL" ] || echo 0 > "$TOTAL"
+echo $(( $(cat "$TOTAL") + 1 )) > "$TOTAL"
+
+FILE="$METRICS/${TYPE,,}"
+[ -f "$FILE" ] || echo 0 > "$FILE"
+echo $(( $(cat "$FILE") + 1 )) > "$FILE"

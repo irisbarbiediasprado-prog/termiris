@@ -1,19 +1,44 @@
 #!/data/data/com.termux/files/usr/bin/bash
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "$0")" && pwd)"
-
-export TERMIRIS_RUNTIME="$ROOT"
+: "${TERMIRIS_RUNTIME:=$(cd "$(dirname "$0")" && pwd)}"
+ROOT="$TERMIRIS_RUNTIME"
 
 BUS="$ROOT/cache/event.bus"
+TRACE="$ROOT/cache/runtime.trace"
 
-mkdir -p "$ROOT/cache"/{reports,sessions,notifications,metrics}
+mkdir -p "$ROOT/cache"/{events,reports,sessions,notifications,metrics}
 rm -f "$BUS"
 mkfifo "$BUS"
 
-"$ROOT/event-bus" < "$BUS" &
+trace(){ printf '[%s] %s\n' "$(date +%H:%M:%S)" "$*" >> "$TRACE"; }
+
+trace "start"
+
+exec 3<&0
+
+"$ROOT/event-bus" <"$BUS" &
 BUS_PID=$!
+trace "bus pid=$BUS_PID"
 
-trap 'kill "$BUS_PID" 2>/dev/null || true; rm -f "$BUS"' EXIT
+"$ROOT/event-parser" <&3 >"$BUS" &
+PARSER_PID=$!
+trace "parser pid=$PARSER_PID"
 
-exec "$ROOT/event-parser" > "$BUS"
+cleanup() {
+    trace "cleanup"
+    kill "$PARSER_PID" "$BUS_PID" 2>/dev/null || true
+    exec 3<&-
+    rm -f "$BUS"
+}
+trap cleanup EXIT
+
+trace "wait parser"
+wait "$PARSER_PID"
+trace "parser rc=$?"
+
+trace "wait bus"
+wait "$BUS_PID"
+trace "bus rc=$?"
+
+trace "finish"
