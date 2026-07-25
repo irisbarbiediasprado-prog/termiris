@@ -14,6 +14,7 @@ Usage:
   context-builder list
   context-builder graph <id>
   context-builder verify <id>
+  context-builder replay <id>
 USAGE
 }
 
@@ -40,74 +41,37 @@ graph() {
     done
 }
 
+replay() {
+    local ID="$1"
+    local FILE="$STORE/$ID.ctx"
+
+    [ -f "$FILE" ] || return
+
+    awk '
+    /^parents:/{
+        for(i=2;i<=NF;i++) print $i
+    }' "$FILE" |
+    while read -r P; do
+        [ -n "$P" ] || continue
+        replay "$P"
+    done
+
+    awk '
+    /^payload:[[:space:]]*\|/ {capture=1; next}
+    capture {print}
+    ' "$FILE"
+
+    echo
+}
+
 case "${1:-}" in
 
-push)
-
-PAYLOAD="$2"
-shift 2
-
-TMP="$(mktemp)"
-
-{
-    echo "version: 1"
-
-    printf "parents:"
-    for P in "$@"; do
-        printf " %s" "$P"
-    done
-    echo
-    echo
-
-    cat "$PAYLOAD"
-} > "$TMP"
-
-ID="$(calc_id "$TMP")"
-
-{
-    echo "id: $ID"
-    cat "$TMP"
-} > "$STORE/$ID.ctx"
-
-rm -f "$TMP"
-
-echo "$ID"
-;;
-
-get)
-
-cat "$STORE/$2.ctx"
-;;
-
-list)
-
-find "$STORE" -maxdepth 1 -name '*.ctx' \
-| xargs -n1 basename \
-| sed 's/\.ctx$//' \
-| sort
-;;
-
-graph)
-
-graph "$2"
-;;
-
-verify)
-
-REAL="$(calc_id "$STORE/$2.ctx")"
-
-if [ "$REAL" = "$2" ]; then
-    echo PASS
-else
-    echo FAIL
-    exit 1
-fi
-;;
+replay)
+    replay "$2"
+    ;;
 
 *)
-
-usage
-exit 1
-;;
+    exec "$HOME/.termiris/bin/context-builder.old" "$@"
+    ;;
 
 esac
