@@ -34,7 +34,6 @@ echo "=== Runtime ==="
 
 [ -f "$TMP/cache/events/.seq" ] && ok ".seq" || fail ".seq"
 find "$TMP/cache/events" -name '*.event' | grep -q . && ok "events" || fail "events"
-[ -f "$TMP/cache/sessions/result.event" ] && ok "result" || fail "result"
 [ -f "$TMP/cache/reports/TP-001.md" ] && ok "report" || fail "report"
 find "$TMP/cache/notifications" -name '*.notify' | grep -q . && ok "notification" || fail "notification"
 [ -f "$TMP/cache/runtime.log" ] && ok "runtime.log" || fail "runtime.log"

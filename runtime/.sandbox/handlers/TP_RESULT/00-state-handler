@@ -1,8 +1,9 @@
 #!/data/data/com.termux/files/usr/bin/bash
 set -euo pipefail
 
-EVENT="$1"
 ROOT="${TERMIRIS_RUNTIME:-$HOME/.termiris/runtime}"
+
+EVENT="$1"
 
 TYPE=
 STATUS=
@@ -17,15 +18,13 @@ while IFS='=' read -r K V; do
 done < "$EVENT"
 
 [ "$TYPE" = "TP_RESULT" ] || exit 0
+[ -f "$CONTEXT" ] || exit 1
 
 SESSION="$ROOT/cache/sessions"
+
 mkdir -p "$SESSION"
 
-cp "$EVENT" "$SESSION/result.event"
-
-if [ -n "${CONTEXT:-}" ] && [ -f "$CONTEXT" ]; then
-    cp "$CONTEXT" "$SESSION/context.ctx"
-fi
+cp "$CONTEXT" "$SESSION/context.ctx"
 
 cat > "$SESSION/state" <<EOT
 status=$STATUS
