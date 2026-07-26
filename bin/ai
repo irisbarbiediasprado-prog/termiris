@@ -1,58 +1,19 @@
 #!/data/data/com.termux/files/usr/bin/bash
 set -euo pipefail
 
-CHAT=ia_chat
-MAIN=main
+SESSION="ia_chat"
 
-ensure_session() {
-    tmux has-session -t "$CHAT" 2>/dev/null || \
-        tmux new-session -d -s "$CHAT" -n Chat \
-            'exec aichat -s termiris_ctx'
-}
-
-reconcile_window() {
-    local NAME="$1"
-    local CMD="$2"
-
-    local IDS
-    IDS="$(tmux list-windows -t "$CHAT" -F '#{window_id} #{window_name}' |
-        awk -v n="$NAME" '$2==n{print $1}')"
-
-    local COUNT
-    COUNT="$(printf '%s\n' "$IDS" | sed '/^$/d' | wc -l)"
-
-    case "$COUNT" in
-        0) tmux new-window -d -t "$CHAT:" -n "$NAME" "$CMD" ;;
-        1) ;;
-        *)
-            printf '%s\n' "$IDS" | tail -n +2 |
-            while read -r ID; do
-                tmux kill-window -t "$ID"
-            done
-            ;;
-    esac
-}
-
-ensure_session
-
-reconcile_window Chat \
-    'exec aichat -s termiris_ctx'
-
-reconcile_window Project \
-    '~/.termiris/bin/project-monitor'
-
-reconcile_window Context \
-    '~/.termiris/bin/chat-monitor'
-
-reconcile_window MITL \
-    '~/.termiris/bin/spike-mitl'
-
-CURRENT="$(tmux display-message -p '#{session_name}')"
-
-if [ "$CURRENT" = "$CHAT" ]; then
-    tmux switch-client -t "$MAIN"
-else
-    tmux switch-client -t "$CHAT"
+if tmux display-message -p '#S' | grep -qx "$SESSION"; then
+    tmux switch-client -t main
+    exit 0
 fi
 
-tmux display-message "🤖 $(tmux display-message -p "#{session_name}")"
+tmux has-session -t "$SESSION" 2>/dev/null || {
+    tmux new-session -d -s "$SESSION" -n Chat \
+        "$HOME/.termiris/bin/termiris-chat termiris_ctx"
+
+    tmux new-window -t "$SESSION" -n Project
+    tmux new-window -t "$SESSION" -n Context
+}
+
+tmux switch-client -t "$SESSION"
