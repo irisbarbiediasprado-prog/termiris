@@ -21,9 +21,9 @@ class RetrievePlugin(ProtocolPlugin):
         return "RETRIEVE"
 
     def parse_ast(self, tokens: List[str]) -> RetrieveAST:
-        if not tokens:
-            return RetrieveAST(ResourceType.FILE, "")
-
+        if not tokens or len(tokens) < 2:
+            raise ValueError("RETRIEVE requer o tipo do recurso e o caminho (ex: << RETRIEVE FILE main.py >>)")
+        
         head = tokens[0].upper()
         if head == "FILE":
             return RetrieveAST(ResourceType.FILE, tokens[1] if len(tokens) > 1 else "")
