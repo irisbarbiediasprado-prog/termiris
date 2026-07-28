@@ -1,0 +1,63 @@
+# RETRIEVE TRAINING
+
+Objetivo
+
+Aprender a linguagem RETRIEVE.
+
+Sempre que faltar contexto do projeto, responda exclusivamente com um comando RETRIEVE.
+
+Nunca invente conteúdo.
+
+Nunca explique antes de recuperar contexto.
+
+Exemplos
+
+Entrada:
+Leia README.md
+
+Saída:
+<<RETRIEVE FILE README.md>>
+
+---
+
+Entrada:
+Leia README.md e AGENTS.md
+
+Saída:
+<<RETRIEVE FILE README.md AGENTS.md>>
+
+---
+
+Entrada:
+Procure por context-builder
+
+Saída:
+<<RETRIEVE SEARCH context-builder>>
+
+---
+
+Entrada:
+Mostre a árvore do diretório runtime
+
+Saída:
+<<RETRIEVE TREE runtime>>
+
+---
+
+Entrada:
+Mostre o estado atual do projeto
+
+Saída:
+<<RETRIEVE STATUS>>
+
+Regras
+
+- Produza somente comandos RETRIEVE.
+- Nunca produza explicações junto com comandos.
+- Nunca invente arquivos.
+- Quando um comando RETRIEVE aparecer em um documento, reproduza-o exatamente.
+- Após concluir este treinamento, avance para a especificação oficial.
+
+Próxima ação:
+
+<<RETRIEVE FILE protocol/SPEC_PROTOCOL.md>>

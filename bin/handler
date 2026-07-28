@@ -1,0 +1,30 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+
+# Se receber um texto cru da IA (ex: comandos ou sinais do aichat), empacota como JSON de evento
+INPUT=$(cat -)
+
+if [ -n "$INPUT" ]; then
+    # Se a entrada não for JSON, formata para o padrão de evento
+    if ! echo "$INPUT" | jq . >/dev/null 2>&1; then
+        EVENT_JSON=$(jq -n --arg raw "$INPUT" '{
+            type: "CONTEXT_UPDATED",
+            artifact_id: "chat_signal",
+            artifact_type: "signal",
+            state: "ACTIVE",
+            priority: 5,
+            resource: "filesystem:///data/data/com.termux/files/home/.termiris/runtime/cache/state/last_signal.txt"
+        }')
+        
+        # Salva o sinal bruto
+        echo "$INPUT" > "$HOME/.termiris/runtime/cache/state/last_signal.txt"
+        echo "$EVENT_JSON" | "$HOME/.termiris/bin/artifact-indexer"
+    else
+        echo "$INPUT" | "$HOME/.termiris/bin/artifact-indexer"
+    fi
+
+    # Dispara a recompilação e emissão do snapshot
+    "$HOME/.termiris/bin/planner"
+    "$HOME/.termiris/bin/emitter"
+fi
+

@@ -3,17 +3,30 @@ set -euo pipefail
 
 SESSION="ia_chat"
 
-if tmux display-message -p '#S' | grep -qx "$SESSION"; then
+# 1. TOGGLE INTERATIVO: Se a sessão já existe e estamos nela ou fora, só alterna
+if tmux display-message -p '#S' 2>/dev/null | grep -qx "$SESSION"; then
     tmux switch-client -t main
     exit 0
 fi
 
+# 2. INICIALIZAÇÃO (Primeira execução):
 tmux has-session -t "$SESSION" 2>/dev/null || {
+    # 2.1. Executa o BOOTSTRAP do Termiris Runtime
+    # Garante que os TPs sejam compilados no snapshot.ctx de forma atômica
+    echo "<< BOOTSTRAP >>" | "$HOME/.termiris/bin/protocol-handler" 2>/dev/null || true
+
+    # 2.2. Cria a Janela 1: Chat Principal
     tmux new-session -d -s "$SESSION" -n Chat \
         "$HOME/.termiris/bin/termiris-chat termiris_ctx"
 
-    tmux new-window -t "$SESSION" -n Project
-    tmux new-window -t "$SESSION" -n Context
+    # 2.3. Cria a Janela 2: Project Monitor (Subprocesso Reativo)
+    tmux new-window -t "$SESSION" -n Project \
+        "$HOME/.termiris/bin/project-monitor"
+
+    # 2.4. Cria a Janela 3: Inspetor do ContextSnapshot em tempo real
+    tmux new-window -t "$SESSION" -n Context -c "$HOME/.termiris" \
+        "watch -n 1 'cat runtime/cache/state/snapshot.ctx 2>/dev/null || echo Sem Contexto Ativo'"
 }
 
+# 3. Anexa ou alterna para a sessão
 tmux switch-client -t "$SESSION"

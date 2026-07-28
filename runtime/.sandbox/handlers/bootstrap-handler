@@ -1,0 +1,36 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+
+EVENTS="$HOME/.termiris/cache/events"
+
+mkdir -p "$EVENTS"
+
+echo "🟢 bootstrap-handler"
+
+inotifywait -m \
+    -e close_write \
+    -e moved_to \
+    -e create \
+    --format '%w%f' \
+    "$EVENTS" |
+while IFS= read -r EVENT; do
+
+    [ -f "$EVENT" ] || continue
+
+    TYPE="$(grep '^type=' "$EVENT" | cut -d= -f2)"
+
+    [ "$TYPE" = "BOOTSTRAP" ] || continue
+
+    STEP="$(grep '^step=' "$EVENT" | cut -d= -f2)"
+    STATUS="$(grep '^status=' "$EVENT" | cut -d= -f2)"
+
+    case "$STATUS" in
+
+        COMPLETE)
+
+            ~/.termiris/bin/bootstrap complete "$STEP"
+            ;;
+
+    esac
+
+done

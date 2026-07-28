@@ -1,0 +1,45 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+
+SESSION="ia_chat"
+STATE_DIR="$HOME/.termiris/runtime/cache/state"
+
+# 1. Garante que os diretórios físicos essenciais SEMPRE existem
+mkdir -p "$STATE_DIR"
+
+# 1.1 Limpa background da PTY/Socket
+pkill -f "event-parser" 2>/dev/null || true
+pkill -f "mitl" 2>/dev/null || true
+rm -f "$HOME/.termiris/runtime/parser.sock"
+rm -f "$HOME/.termiris/runtime/event-parser.log"
+
+# 2. Mata a sessão do tmux de forma segura (ignorando erro se ela não existir)
+tmux kill-session -t "$SESSION" 2>/dev/null || true
+
+# 3. Reseta o snapshot em memória/disco sem apagar pastas do sistema
+rm -f "$STATE_DIR"/*
+
+# 4. RE-BOOTSTRAP ATÔMICO VIA PROTOCOL HANDLER
+# Compila Gen 1 limpa diretamente pelos TPs base
+echo "<< BOOTSTRAP >>" | "$HOME/.termiris/bin/protocol-handler" 2>/dev/null || true
+
+# 5. Reconstrói a sessão do tmux do zero
+tmux new-session -d -s "$SESSION" -n Chat \
+    "$HOME/.termiris/bin/termiris-chat termiris_ctx"
+
+tmux new-window -t "$SESSION" -n Project \
+    "$HOME/.termiris/bin/project-monitor"
+
+tmux new-window -t "$SESSION" -n Context -c "$HOME/.termiris" \
+    "less +F runtime/cache/state/snapshot.ctx 2>/dev/null || echo 'Sem Contexto Ativo'"
+
+tmux select-window -t "$SESSION:Chat"
+
+# 6. Se estivemos fora do tmux, anexa; se já estivemos dentro, troca o cliente
+if [ -z "${TMUX:-}" ]; then
+    tmux attach-session -t "$SESSION"
+else
+    tmux switch-client -t "$SESSION"
+fi
+
+echo "🟢 Termiris ressetado com sucesso para Gen 1 via ProtocolHandler"

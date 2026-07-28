@@ -1,0 +1,27 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+
+ROOT="${TERMIRIS_RUNTIME:-$HOME/.termiris/runtime}"
+
+EVENT="$ROOT/tmp.retrieve.event"
+
+mkdir -p "$ROOT"
+
+cat > "$EVENT" <<EOT
+type=RETRIEVE
+verb=FILE
+arg=protocol/SPEC_PROTOCOL.md
+EOT
+
+echo "===== INPUT ====="
+cat "$EVENT"
+
+echo
+echo "===== OUTPUT ====="
+
+"$ROOT/handlers/RETRIEVE/retrieve-handler" "$EVENT"
+
+echo
+echo "===== CONTEXT ====="
+
+find "$ROOT/cache/context" -name '*.ctx' | tail -1 | xargs cat

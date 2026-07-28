@@ -19,10 +19,17 @@ eval "$(zoxide init bash)"
 # Termiris history
 export HISTFILE="$HOME/.bash_history"
 export HISTSIZE=100000
-export HISTFILESIZE=200000
-export HISTCONTROL=ignoredups:erasedups
 export HISTIGNORE="ls:cd:pwd:exit:clear"
+# Evita comandos duplicados sequenciais e linhas que começam com espaço
+export HISTCONTROL=ignoreboth
+
+# Aumenta o tamanho do histórico (opcional, mas recomendado)
+
+# Adiciona os comandos ao histórico imediatamente, em vez de sobrescrever
 shopt -s histappend
+
+# Salva e recarrega o histórico a cada exibição do prompt (mágica do compartilhamento)
+export PROMPT_COMMAND="history -a; history -c; history -r; $PROMPT_COMMAND"
 
 
 

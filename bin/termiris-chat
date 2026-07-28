@@ -1,0 +1,13 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+
+SESSION="${1:-termiris_ctx}"
+mkdir -p "$HOME/.termiris/runtime"
+
+# Se o event-parser não estiver rodando, lança desvinculado da PTY
+if ! pgrep -f "event-parser" > /dev/null; then
+    (sleep 1 && "$HOME/.termiris/bin/event-parser" >/dev/null 2>&1) &
+fi
+
+# Roda o aichat envelopado pelo MITL
+exec "$HOME/.termiris/bin/mitl" aichat -s "$SESSION"

@@ -1,37 +1,36 @@
 #!/data/data/com.termux/files/usr/bin/bash
 set -euo pipefail
 
-ROOT="$HOME/.termiris"
-CACHE="$ROOT/cache/context"
-CHANGED="$CACHE/changed-files.txt"
-TIMER="$CACHE/.debounce.pid"
+SNAPSHOT_FILE="$HOME/.termiris/runtime/cache/state/snapshot.ctx"
+SESSION="ia_chat"
+TARGET="ia_chat:Chat*"
 
-mkdir -p "$CACHE"
-: > "$CHANGED"
+mkdir -p "$(dirname "$SNAPSHOT_FILE")"
+touch "$SNAPSHOT_FILE"
 
-echo "👀 Project Monitor iniciado"
+sleep 1
 
-trigger_builder() {
-    if [ -f "$TIMER" ]; then
-        PID="$(cat "$TIMER" 2>/dev/null || true)"
-        [ -n "${PID:-}" ] && kill "$PID" 2>/dev/null || true
+# Injeção inicial na abertura do monitor usando o alvo por nome "ia_chat:Chat*"
+if [ -s "$SNAPSHOT_FILE" ] && tmux has-session -t "$SESSION" 2>/dev/null; then
+    tmux send-keys -t "$TARGET" C-u ".file $SNAPSHOT_FILE" Enter
+    echo "🟢 [project-monitor] Injeção inicial executada na janela Chat!"
+fi
+
+LAST_HASH=$(sha256sum "$SNAPSHOT_FILE" 2>/dev/null | cut -d' ' -f1 || true)
+
+echo "👁️  [project-monitor] Monitorando alterações em snapshot.ctx..."
+
+while true; do
+    if [ -f "$SNAPSHOT_FILE" ]; then
+        CURRENT_HASH=$(sha256sum "$SNAPSHOT_FILE" 2>/dev/null | cut -d' ' -f1 || true)
+        
+        if [ -n "$CURRENT_HASH" ] && [ "$CURRENT_HASH" != "$LAST_HASH" ]; then
+            echo "⚡ [project-monitor] Alteração detectada! Injetando na janela Chat..."
+            if tmux has-session -t "$SESSION" 2>/dev/null; then
+                tmux send-keys -t "$TARGET" C-u ".file $SNAPSHOT_FILE" Enter
+            fi
+            LAST_HASH="$CURRENT_HASH"
+        fi
     fi
-
-    (
-        sleep 1
-        ~/.termiris/bin/context-builder --push
-        rm -f "$TIMER"
-    ) &
-    echo $! > "$TIMER"
-}
-
-inotifywait -m -r \
-    -e close_write \
-    -e moved_to \
-    --format '%w%f' \
-    --exclude '(^|/)\.git(/|$)|(^|/)cache(/|$)|(^|/)tmp(/|$)' \
-    "$ROOT" |
-while IFS= read -r FILE; do
-    grep -Fxq "$FILE" "$CHANGED" || echo "$FILE" >> "$CHANGED"
-    trigger_builder
+    sleep 1
 done

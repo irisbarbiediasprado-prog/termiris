@@ -1,0 +1,65 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+
+[ $# -eq 1 ] || {
+    echo "usage: tp-judge <run-dir>"
+    exit 1
+}
+
+RUN="$1"
+
+TEST="$RUN/TP-001.response"
+RESULT="$RUN/TP-001.result"
+
+PASS=true
+NOTES=""
+
+FIRST="$(
+grep -o '<<[^>]*>>' "$TEST" | head -n1 || true
+)"
+
+if [ "$FIRST" != "<<RETRIEVE SEARCH context-builder>>" ]; then
+    PASS=false
+    NOTES="${NOTES}Primeiro evento incorreto.\n"
+fi
+
+grep -q '<<RETRIEVE TREE' "$TEST" && {
+    PASS=false
+    NOTES="${NOTES}TREE utilizado.\n"
+}
+
+grep -q '<<RETRIEVE FILE' "$TEST" && {
+    PASS=false
+    NOTES="${NOTES}FILE utilizado.\n"
+}
+
+grep -q '{' "$TEST" && {
+    PASS=false
+    NOTES="${NOTES}JSON detectado.\n"
+}
+
+if $PASS; then
+    STATUS=PASS
+else
+    STATUS=FAIL
+fi
+
+cat > "$RESULT" <<RESULT
+STATUS: $STATUS
+
+Prompt:
+TP-001.prompt
+
+Response:
+TP-001.response
+
+Verdict:
+
+$STATUS
+
+Notes:
+
+$(printf "%b" "$NOTES")
+RESULT
+
+echo "$STATUS"

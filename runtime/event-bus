@@ -13,7 +13,8 @@ debug() {
 
 next_id() {
     local n
-    n=$(($(cat "$ROOT/cache/events/.seq" 2>/dev/null || echo 0)+1))
+    seq="$(cat "$ROOT/cache/events/.seq" 2>/dev/null || echo 0)"
+    n=$((10#$seq + 1))
     printf '%06d' "$n" > "$ROOT/cache/events/.seq"
     printf '%06d' "$n"
 }
@@ -35,6 +36,7 @@ process_event() {
         debug "NO_HANDLER_DIR $type"
         return
     }
+    cat "$event"
 
     for handler in "$ROOT"/handlers/"$type"/*; do
         [ -x "$handler" ] || continue

@@ -1,0 +1,9 @@
+#!/usr/bin/env python3
+import sys, json
+
+try:
+    payload = json.load(sys.stdin)
+    print(payload.get("content", json.dumps(payload)))
+except Exception as e:
+    print(f"[Error: {e}]")
+

@@ -1,0 +1,9 @@
+#!/usr/bin/env python3
+import sys, os
+sys.path.insert(0, os.path.expanduser("~/.termiris/lib"))
+
+from termiris.planner import main
+
+if __name__ == "__main__":
+    main()
+

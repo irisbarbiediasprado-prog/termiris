@@ -1,0 +1,31 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+
+CACHE="$HOME/.termiris/cache"
+OUT="$CACHE/context/agent.md"
+
+mkdir -p "$(dirname "$OUT")"
+
+cat > "$OUT" <<'CTX'
+# Agent Context
+
+State
+
+LEARNING
+
+Current lesson
+
+BOOTSTRAP
+
+Expected action
+
+<<BOOTSTRAP>>
+
+Rules
+
+- Do not answer in natural language.
+- Use only Termiris Protocol events.
+- Learn through RETRIEVE.
+CTX
+
+printf '%s\n' "$OUT"

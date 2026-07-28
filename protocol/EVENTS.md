@@ -103,3 +103,19 @@ A ordem dos eventos é preservada.
 
 Eventos possuem timestamp.
 
+
+---
+
+## RETRIEVE TREE
+
+Retorna a estrutura do projeto preservando a hierarquia e ignorando diretórios temporários.
+
+Resposta:
+
+type=TP_RESULT
+status=PASS
+payload=BEGIN TREE
+
+...
+
+END TREE

@@ -1,0 +1,82 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+
+ROOT="$HOME/.termiris"
+
+STATE="$ROOT/state/bootstrap.state"
+CHAT="$ROOT/runtime/chat.log"
+
+CURRENT="$(
+awk '
+/^current:/{
+    print $2
+}
+' "$STATE"
+)"
+
+STEP="$(
+awk '
+BEGIN{n=0}
+/^steps:/{
+    mode=1
+    next
+}
+mode && /^  - /{
+    if(n=='"$CURRENT"'){
+        sub(/^  - /,"")
+        print
+        exit
+    }
+    n++
+}
+' "$STATE"
+)"
+
+PASS=false
+
+case "$STEP" in
+
+SPEC_PROTOCOL)
+
+grep -q '<<RETRIEVE SPEC_PROTOCOL>>' "$CHAT" &&
+grep -q 'SPEC_PROTOCOL_COMPLETE' "$CHAT" &&
+PASS=true
+;;
+
+EVENTS)
+
+grep -q '<<RETRIEVE EVENTS>>' "$CHAT" &&
+grep -q 'EVENTS_COMPLETE' "$CHAT" &&
+PASS=true
+;;
+
+TEST_POLICY)
+
+grep -q '<<RETRIEVE TEST_POLICY>>' "$CHAT" &&
+grep -q 'TEST_POLICY_COMPLETE' "$CHAT" &&
+PASS=true
+;;
+
+TP_CONFORMANCE)
+
+grep -q '<<RETRIEVE TP_CONFORMANCE>>' "$CHAT" &&
+grep -q 'TP_CONFORMANCE_COMPLETE' "$CHAT" &&
+PASS=true
+;;
+
+TP_CURRICULUM)
+
+grep -q '<<RETRIEVE TP_CURRICULUM>>' "$CHAT" &&
+grep -q 'TP_CURRICULUM_COMPLETE' "$CHAT" &&
+PASS=true
+;;
+
+esac
+
+if $PASS; then
+    ~/.termiris/bin/bootstrap next
+    echo "PASS"
+else
+    ~/.termiris/bin/bootstrap status
+    echo "FAIL"
+fi

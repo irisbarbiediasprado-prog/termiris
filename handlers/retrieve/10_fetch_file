@@ -1,0 +1,114 @@
+#!/data/data/com.termux/files/usr/bin/bash
+"""
+TERMIRIS RETRIEVE HANDLER v1
+STATUS: FROZEN
+
+CONTRATO:
+  Entrada:
+    - Recebe o caminho do evento ($1) vindo do Event Bus.
+  Saída:
+    - Grava atomicamente um arquivo .ctx em cache/context/.
+    - stderr: reservado para logs de erro e auditoria.
+    - stdout: reservado para novos eventos (não gera eventos adicionais por padrão).
+  Invariantes:
+    - Nunca se comunica diretamente com a IA.
+    - Nunca altera arquivos .ctx existentes.
+    - Grava o artefato via arquivo temporário (.tmp) seguido de rename POSIX (mv).
+"""
+set -euo pipefail
+
+EVENT_FILE="$1"
+
+event_get() {
+    local key="$1"
+    awk -F= -v k="$key" '$1 == k {print $2; exit}' "$EVENT_FILE"
+}
+
+VERB="$(event_get "verb")"
+ARG="$(event_get "arg")"
+EVENT_ID="$(event_get "event_id")"
+
+# Escopo de atuação: apenas verb FILE ou omissão de verb
+if [ -n "$VERB" ] && [ "$VERB" != "FILE" ]; then
+    exit 0
+fi
+
+if [ -z "$ARG" ]; then
+    printf '[retrieve-handler] AVISO: Argumento de arquivo vazio\n' >&2
+    exit 0
+fi
+
+FILE_PATH="$ARG"
+if [ ! -f "$FILE_PATH" ]; then
+    printf '[retrieve-handler] ERRO: Arquivo nao encontrado: %s\n' "$FILE_PATH" >&2
+    exit 0
+fi
+
+ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+CTX_DIR="$ROOT/cache/context"
+mkdir -p "$CTX_DIR"
+
+# TODO: Substituir por trava atômica (flock) quando houver múltiplos handlers executando em paralelo
+next_ctx_seq() {
+    local n
+    seq="$(cat "$CTX_DIR/.seq" 2>/dev/null || echo 0)"
+    n=$((10#$seq + 1))
+    printf '%06d' "$n" > "$CTX_DIR/.seq"
+    printf '%06d' "$n"
+}
+
+SEQ_ID="$(next_ctx_seq)"
+TIMESTAMP="$(date +%s%3N 2>/dev/null || echo "$(date +%s)000")"
+CTX_FILE="$CTX_DIR/${SEQ_ID}_${TIMESTAMP}_retrieve_file.ctx"
+TMP_FILE="$CTX_DIR/tmp_${SEQ_ID}.tmp"
+
+# Leitura segura do conteúdo e metadados via Python
+READ_DATA="$(python3 -c '
+import os, sys, json
+
+path = sys.argv[1]
+st = os.stat(path)
+
+with open(path, "r", errors="replace") as f:
+    content = f.read()
+
+out = {
+    "content": content,
+    "size": st.st_size,
+    "mtime": int(st.st_mtime * 1000)
+}
+print(json.dumps(out))
+' "$FILE_PATH")"
+
+FILE_CONTENT="$(python3 -c 'import sys, json; print(json.dumps(json.loads(sys.argv[1])["content"]))' "$READ_DATA")"
+FILE_SIZE="$(python3 -c 'import sys, json; print(json.loads(sys.argv[1])["size"])' "$READ_DATA")"
+FILE_MTIME="$(python3 -c 'import sys, json; print(json.loads(sys.argv[1])["mtime"])' "$READ_DATA")"
+
+# Escreve o pacote .ctx estruturado no arquivo temporário
+cat <<EOF > "$TMP_FILE"
+{
+  "specversion": "1.0",
+  "ctx_id": "${SEQ_ID}_${TIMESTAMP}_retrieve_file",
+  "timestamp": ${TIMESTAMP},
+  "producer": {
+    "handler_name": "retrieve_file",
+    "source_event_id": "${EVENT_ID}"
+  },
+  "target": {
+    "type": "FILE",
+    "path": "${FILE_PATH}"
+  },
+  "metadata": {
+    "file_size_bytes": ${FILE_SIZE},
+    "mtime_ms": ${FILE_MTIME}
+  },
+  "payload": {
+    "content": ${FILE_CONTENT}
+  }
+}
+EOF
+
+# Troca atômica de nome (POSIX rename)
+mv "$TMP_FILE" "$CTX_FILE"
+
+printf '[retrieve-handler] Pacote Context Package criado: %s\n' "$CTX_FILE" >&2

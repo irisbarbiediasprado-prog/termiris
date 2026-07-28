@@ -3,8 +3,6 @@ set -euo pipefail
 
 while IFS= read -r LINE; do
 
-    [ -n "$LINE" ] || continue
-
     case "$LINE" in
 
         '<<RETRIEVE '*)
@@ -16,19 +14,79 @@ while IFS= read -r LINE; do
             ARG="${CMD#"$VERB"}"
             ARG="${ARG# }"
 
-            printf 'type=RETRIEVE\n'
-            printf 'verb=%s\n' "$VERB"
-            printf 'arg=%s\n' "$ARG"
-            printf '\n'
+            cat <<EVENT
+type=RETRIEVE
+verb=$VERB
+arg=$ARG
+EVENT
+            ;;
+
+        BOOTSTRAP_COMPLETE)
+
+            cat <<EVENT
+type=BOOTSTRAP
+step=BOOTSTRAP
+status=COMPLETE
+EVENT
+            ;;
+
+        SPEC_PROTOCOL_COMPLETE)
+
+            cat <<EVENT
+type=BOOTSTRAP
+step=SPEC_PROTOCOL
+status=COMPLETE
+EVENT
+            ;;
+
+        EVENTS_COMPLETE)
+
+            cat <<EVENT
+type=BOOTSTRAP
+step=EVENTS
+status=COMPLETE
+EVENT
+            ;;
+
+        TEST_POLICY_COMPLETE)
+
+            cat <<EVENT
+type=BOOTSTRAP
+step=TEST_POLICY
+status=COMPLETE
+EVENT
+            ;;
+
+        TP_CONFORMANCE_COMPLETE)
+
+            cat <<EVENT
+type=BOOTSTRAP
+step=TP_CONFORMANCE
+status=COMPLETE
+EVENT
+            ;;
+
+        TP_CURRICULUM_COMPLETE)
+
+            cat <<EVENT
+type=BOOTSTRAP
+step=TP_CURRICULUM
+status=COMPLETE
+EVENT
             ;;
 
         *)
 
-            printf 'type=TEXT\n'
-            printf 'content=%s\n' "$LINE"
-            printf '\n'
+            [ -n "$LINE" ] || continue
+
+            cat <<EVENT
+type=TEXT
+content=$LINE
+EVENT
             ;;
 
     esac
+
+    echo
 
 done

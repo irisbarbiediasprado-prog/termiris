@@ -1,0 +1,83 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+
+: "${TERMIRIS_RUNTIME:=$(cd "$(dirname "$0")" && pwd)}"
+ROOT="$TERMIRIS_RUNTIME"
+
+DEBUG="${TERMIRIS_DEBUG:-0}"
+
+debug() {
+    [ "$DEBUG" = "1" ] || return 0
+    printf '%s\n' "$*" >> "$ROOT/cache/event-bus.debug"
+}
+
+next_id() {
+    local n
+    seq="$(cat "$ROOT/cache/events/.seq" 2>/dev/null || echo 0)"
+    n=$((10#$seq + 1))
+    printf '%06d' "$n" > "$ROOT/cache/events/.seq"
+    printf '%06d' "$n"
+}
+
+process_event() {
+    local payload="$1"
+    local id event type handler out block rc
+
+    id="$(next_id)"
+    event="$ROOT/cache/events/${id}.event"
+
+    printf '%s\n' "$payload" > "$event"
+
+    type="$(awk -F= '/^type=/{print $2;exit}' "$event")"
+
+    debug "EVENT  id=$id type=$type"
+
+    [ -d "$ROOT/handlers/$type" ] || {
+        debug "NO_HANDLER_DIR $type"
+        return
+    }
+    cat "$event"
+
+    for handler in "$root"/handlers/"$type"/*; do
+        [ -x "$handler" ] || continue
+
+        debug "RUN $(basename "$handler")"
+
+        out="$("$handler" "$event")"
+        rc=$?
+
+        debug "EXIT $rc"
+        [ -n "$out" ] && debug "OUTPUT<<$out>>"
+
+        block=
+
+        while IFS= read -r line; do
+            if [ -z "$line" ]; then
+                [ -z "$block" ] || process_event "$block"
+                block=
+                continue
+            fi
+
+            if [ -z "$block" ]; then
+                block="$line"
+            else
+                block="$block"$'\n'"$line"
+            fi
+        done <<< "$out"
+
+        [ -z "$block" ] || process_event "$block"
+    done
+}
+
+while IFS= read -r line; do
+    [ -n "$line" ] || continue
+
+    payload="$line"
+
+    while IFS= read -r next; do
+        [ -z "$next" ] && break
+        payload="$payload"$'\n'"$next"
+    done
+
+    process_event "$payload"
+done

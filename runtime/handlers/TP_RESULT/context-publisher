@@ -1,0 +1,30 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+
+ROOT="${TERMIRIS_RUNTIME:-$HOME/.termiris/runtime}"
+EVENT="$1"
+
+TYPE="$(awk -F= '/^type=/{print $2}' "$EVENT")"
+STATUS="$(awk -F= '/^status=/{print $2}' "$EVENT")"
+CTX="$(awk -F= '/^context=/{print $2}' "$EVENT")"
+
+[ "$TYPE" = "TP_RESULT" ] || exit 0
+[ "$STATUS" = "PASS" ] || exit 0
+[ -f "$CTX" ] || exit 0
+
+OUT="$HOME/.termiris/cache/context/context.md"
+
+mkdir -p "$(dirname "$OUT")"
+
+awk '
+/^payload:[[:space:]]*\|/{
+    payload=1
+    next
+}
+payload{
+    sub(/^  /,"")
+    print
+}
+' "$CTX" > "$OUT"
+
+echo "📤 context.md atualizado"

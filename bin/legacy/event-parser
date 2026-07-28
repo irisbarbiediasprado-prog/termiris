@@ -1,0 +1,150 @@
+#!/usr/bin/env python3
+"""
+TERMIRIS EVENT PARSER v1
+STATUS: FROZEN
+
+CONTRATO:
+  Entrada:
+    - Byte stream contínuo vindo do parser.sock (MITL).
+  Saída:
+    - Eventos estruturados em formato UNIX chave-valor no stdout.
+  Invariantes (NUNCA FAZ):
+    - Nunca executa handlers.
+    - Nunca interpreta semântica de protocolo ou regras de negócio.
+    - Nunca lê arquivos no sistema de arquivos local.
+    - Nunca modifica estado de contexto ou sessões.
+    - Nunca se comunica diretamente com a IA.
+"""
+
+import os
+import sys
+import socket
+import time
+import itertools
+from enum import IntEnum
+
+MAX_COMMAND_SIZE = 64 * 1024  # 64 KB limite de buffer por instrução
+_counter = itertools.count()
+
+XDG_DIR = os.environ.get("XDG_RUNTIME_DIR")
+HOME_DIR = os.environ.get("HOME", "")
+
+if XDG_DIR and os.path.exists(os.path.join(XDG_DIR, "termiris", "parser.sock")):
+    SOCKET_PATH = os.path.join(XDG_DIR, "termiris", "parser.sock")
+else:
+    SOCKET_PATH = os.path.join(HOME_DIR, ".termiris", "runtime", "parser.sock")
+
+class State(IntEnum):
+    PASS_THROUGH = 0
+    MAYBE_START = 1
+    IN_COMMAND = 2
+    MAYBE_END = 3
+
+def parse_command(raw_cmd: str) -> dict:
+    """
+    Transforma o conteúdo bruto de << ... >> em um dicionário de evento.
+    TODO: Substituir o split() simples por Tokenizer/Lexer baseado na EBNF do TP
+          para suporte completo a quoted strings ("caminho com espaco.txt") e escapes.
+    """
+    cmd = raw_cmd.strip()
+    if not cmd:
+        return None
+
+    parts = cmd.split(maxsplit=2)
+    command_name = parts[0] if len(parts) > 0 else "UNKNOWN"
+    verb = parts[1] if len(parts) > 1 else ""
+    arg = parts[2] if len(parts) > 2 else ""
+
+    ts = int(time.time() * 1000)
+    seq = next(_counter)
+
+    return {
+        "event_version": "1",
+        "event_id": f"evt_{ts}_{seq}",
+        "type": command_name,
+        "verb": verb,
+        "arg": arg,
+        "timestamp": ts
+    }
+
+def emit_event(event: dict):
+    """Emite o dicionário de evento formatado em chave-valor UNIX no stdout."""
+    if not event:
+        return
+
+    sys.stdout.write(f"event_version={event['event_version']}\n")
+    sys.stdout.write(f"event_id={event['event_id']}\n")
+    sys.stdout.write(f"type={event['type']}\n")
+    if event.get("verb"):
+        sys.stdout.write(f"verb={event['verb']}\n")
+    if event.get("arg"):
+        sys.stdout.write(f"arg={event['arg']}\n")
+    sys.stdout.write(f"timestamp={event['timestamp']}\n")
+    sys.stdout.write("\n")
+    sys.stdout.flush()
+
+def main():
+    if not os.path.exists(SOCKET_PATH):
+        sys.stderr.write(f"[event-parser] Socket nao encontrado em {SOCKET_PATH}\n")
+        sys.exit(1)
+
+    client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    try:
+        client.connect(SOCKET_PATH)
+    except Exception as e:
+        sys.stderr.write(f"[event-parser] Erro ao conectar ao socket: {e}\n")
+        sys.exit(1)
+
+    sys.stderr.write(f"[event-parser] Conectado ao MITL em {SOCKET_PATH}\n")
+
+    state = State.PASS_THROUGH
+    cmd_buffer = []
+
+    while True:
+        try:
+            chunk = client.recv(1024)
+            if not chunk:
+                break
+        except (KeyboardInterrupt, Exception):
+            break
+
+        for byte in chunk:
+            char = chr(byte)
+
+            if state == State.PASS_THROUGH:
+                if char == '<':
+                    state = State.MAYBE_START
+
+            elif state == State.MAYBE_START:
+                if char == '<':
+                    cmd_buffer.clear()
+                    state = State.IN_COMMAND
+                else:
+                    state = State.PASS_THROUGH
+
+            elif state == State.IN_COMMAND:
+                if char == '>':
+                    state = State.MAYBE_END
+                else:
+                    cmd_buffer.append(char)
+                    if len(cmd_buffer) > MAX_COMMAND_SIZE:
+                        sys.stderr.write("[event-parser] AVISO: Comando excedeu limite maximo. Descartando.\n")
+                        cmd_buffer.clear()
+                        state = State.PASS_THROUGH
+
+            elif state == State.MAYBE_END:
+                if char == '>':
+                    raw_cmd = "".join(cmd_buffer)
+                    event = parse_command(raw_cmd)
+                    emit_event(event)
+                    cmd_buffer.clear()
+                    state = State.PASS_THROUGH
+                else:
+                    cmd_buffer.append('>')
+                    cmd_buffer.append(char)
+                    state = State.IN_COMMAND
+
+    client.close()
+
+if __name__ == "__main__":
+    main()

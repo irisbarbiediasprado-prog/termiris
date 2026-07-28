@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+TARGET_FILE="${HOME}/.termiris/cache/context/context.md"
+mkdir -p "$(dirname "$TARGET_FILE")"
+
+cat << 'BOOTSTRAP_OUT' > "$TARGET_FILE"
+type=BOOTSTRAP
+version=1
+protocol=Termiris
+curriculum=TP
+state=LEARNING
+next=
+SPEC_PROTOCOL
+EVENTS
+TEST_POLICY
+TP_CONFORMANCE
+TP_CURRICULUM
+BOOTSTRAP_OUT
+
+echo "=== $TARGET_FILE ==="
+cat "$TARGET_FILE"
