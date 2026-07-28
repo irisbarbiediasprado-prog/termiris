@@ -1,64 +1,31 @@
 #!/usr/bin/env python3
 import sys
 from pathlib import Path
-from urllib.parse import urlparse
 
-sys.path.insert(0, str(Path.home() / ".termiris" / "lib"))
+# Adiciona lib ao PYTHONPATH
+LIB_DIR = Path.home() / ".termiris" / "lib"
+sys.path.insert(0, str(LIB_DIR))
 
-from runtime.engine import RuntimeEngine
-from runtime.repository import FilesystemBootstrapRepository
-from providers.filesystem import TemporaryArtifactProvider
-from providers.query import SystemQueryProvider
-from protocol.dispatcher import ProtocolDispatcher
-
-def resolve_resource_content(uri: str) -> str:
-    """Lê o conteúdo real do arquivo apontado pela URI do recurso."""
-    try:
-        parsed = urlparse(uri)
-        if parsed.scheme == "filesystem":
-            path = Path(parsed.path)
-            if path.exists():
-                return path.read_text(encoding="utf-8")
-        return f"[Erro: Não foi possível ler o recurso {uri}]"
-    except Exception as e:
-        return f"[Erro ao ler recurso {uri}: {e}]"
+from protocol.kernel import CommandRouter, ProtocolKernel
+from protocol.isa import PrimitiveISA
 
 def main():
     raw_input = sys.stdin.read().strip()
     if not raw_input:
-        return
+        sys.exit(0)
 
-    state_dir = Path.home() / ".termiris" / "runtime" / "cache" / "state"
-    state_dir.mkdir(parents=True, exist_ok=True)
+    router = CommandRouter()
+    router.auto_discover()
+    kernel = ProtocolKernel(router)
 
-    engine = RuntimeEngine()
-    bootstrap_repo = FilesystemBootstrapRepository(bootstrap_dir=Path.home() / ".termiris" / "tp")
-    temp_artifacts = TemporaryArtifactProvider(state_dir)
-    queries = SystemQueryProvider()
-
-    dispatcher = ProtocolDispatcher(
-        engine=engine,
-        bootstrap_repo=bootstrap_repo,
-        temp_artifacts=temp_artifacts,
-        queries=queries
-    )
-
-    result = dispatcher.dispatch(raw_input)
-
-    if result and result.snapshot:
-        snapshot_file = state_dir / "snapshot.ctx"
-        
-        # Monta o bundle consolidado com o TEXTO COMPLETO dos arquivos de protocolo
-        lines = [f"<!-- TERMIRIS CONTEXT SNAPSHOT Gen {result.snapshot.generation} [{result.snapshot.snapshot_hash}] -->\n"]
-        
-        for art in result.snapshot.artifacts:
-            content = resolve_resource_content(art.resource.uri)
-            lines.append(f"--- BEGIN ARTIFACT: {art.metadata.id} ({art.metadata.artifact_type}) ---")
-            lines.append(content)
-            lines.append(f"--- END ARTIFACT: {art.metadata.id} ---\n")
-
-        snapshot_file.write_text("\n".join(lines), encoding="utf-8")
-        print(f"🟢 [Termiris Runtime] Snapshot preenchido com conteúdo físico ({len(result.snapshot.artifacts)} artefatos).")
+    try:
+        operations = kernel.compile(raw_input)
+        for op in operations:
+            # Aqui as operações da ISA são entregues de forma declarativa para o Runtime
+            print(f"🟢 [ISA OPERAÇÃO EMITIDA]: {op.instruction.name} -> Payload: {op.payload}", file=sys.stderr)
+    except Exception as e:
+        print(f"❌ [ERRO NO COMPILADOR]: {e}", file=sys.stderr)
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
