@@ -3,12 +3,15 @@ import socket
 import re
 import sys
 from pathlib import Path
+from time import time
+from uuid import uuid4
 
 LIB_DIR = Path.home() / ".termiris" / "lib"
 if str(LIB_DIR) not in sys.path:
     sys.path.insert(0, str(LIB_DIR))
 
 from protocol.dispatcher import ProtocolRuntime
+from events import JsonlEventSink
 
 SOCKET_PATH = Path.home() / ".termiris" / "runtime" / "parser.sock"
 LOG_FILE = Path.home() / ".termiris" / "runtime" / "event-parser.log"
@@ -16,6 +19,7 @@ LOG_FILE = Path.home() / ".termiris" / "runtime" / "event-parser.log"
 ANSI_ESCAPE = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
 
 runtime = ProtocolRuntime()
+sink = JsonlEventSink()
 
 def log(msg):
     with open(LOG_FILE, "a", encoding="utf-8") as f:
@@ -24,7 +28,21 @@ def log(msg):
 def clean(text):
     return ANSI_ESCAPE.sub("", text)
 
+def publish_tag(tag: str):
+    sink.publish({
+        "version": 1,
+        "event_id": str(uuid4()),
+        "trace_id": "unknown",
+        "timestamp": int(time() * 1000),
+        "source": "protocol",
+        "type": "tag.detected",
+        "payload": {
+            "raw_text": tag
+        }
+    })
+
 def handle(tag):
+    publish_tag(tag)
     log(f"[Tag detectada]: {tag}")
     try:
         ops = runtime.handle(tag)
@@ -73,6 +91,7 @@ def main():
     except Exception as e:
         log(f"Erro: {e}")
     finally:
+        sink.close()
         client.close()
 
 if __name__ == "__main__":
