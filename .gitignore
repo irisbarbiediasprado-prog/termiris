@@ -14,3 +14,4 @@ __pycache__/
 # C Objects & Binaries
 *.o
 mitl/src/*.o
+runtime/events.jsonl
