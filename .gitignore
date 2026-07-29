@@ -4,3 +4,13 @@ cache/
 test/
 tmp/
 __pycache__/
+
+# Python Cache & Bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# C Objects & Binaries
+*.o
+mitl/src/*.o
