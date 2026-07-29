@@ -17,11 +17,11 @@ class TestRetrievePlugin:
         ast = plugin.parse_ast(tokens)
         
         assert ast.resource_type == ResourceType.FILE
-        assert ast.target == "main.py"
+        assert ast.targets[0] == "main.py"
 
     def test_parse_ast_invalid_args_raises_value_error(self, plugin):
         """Garante que o parser falhe cedo ao receber argumentos insuficientes."""
-        with pytest.raises(ValueError, match="RETRIEVE requer"):
+        with pytest.raises(ValueError, match="RETRIEVE vazio"):
             plugin.parse_ast([])
 
     def test_lower_to_intent(self, plugin):
@@ -38,10 +38,11 @@ class TestRetrievePlugin:
         operations = plugin.lower_to_operations(intent)
 
         assert len(operations) == 1
-        assert operations[0].instruction == PrimitiveISA.READ
+        assert operations[0].instruction == PrimitiveISA.SNAPSHOT
         assert operations[0].payload == {
-            "target": "script.py",
-            "fallback_dir": "protocol"
+            "action": "INJECT_RESOURCE",
+            "resource_type": "FILE",
+            "targets": ["script.py"]
         }
 
 

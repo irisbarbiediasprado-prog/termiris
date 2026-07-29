@@ -1,5 +1,7 @@
+import re
 from dataclasses import dataclass
 from enum import Enum, auto
+from pathlib import Path
 from typing import List
 from protocol.base import ProtocolPlugin
 from protocol.ir import Intent, IntentKind
@@ -9,11 +11,13 @@ class ResourceType(Enum):
     FILE = auto()
     TREE = auto()
     SEARCH = auto()
+    DIFF = auto()
+    STATUS = auto()
 
 @dataclass(frozen=True)
 class RetrieveAST:
     resource_type: ResourceType
-    target: str
+    targets: List[str]
 
 class RetrievePlugin(ProtocolPlugin):
     @property
@@ -21,46 +25,81 @@ class RetrievePlugin(ProtocolPlugin):
         return "RETRIEVE"
 
     def parse_ast(self, tokens: List[str]) -> RetrieveAST:
-        if not tokens or len(tokens) < 2:
-            raise ValueError("RETRIEVE requer o tipo do recurso e o caminho (ex: << RETRIEVE FILE main.py >>)")
-        
-        head = tokens[0].upper()
+        if not tokens:
+            raise ValueError("RETRIEVE vazio")
+
+        # Limpa marcas de streaming
+        clean = [t for t in tokens if not t.startswith("<<") and not t.endswith(">>")]
+        if not clean:
+            clean = tokens
+
+        head = clean[0].upper()
+        args = clean[1:]
+
         if head == "FILE":
-            return RetrieveAST(ResourceType.FILE, tokens[1] if len(tokens) > 1 else "")
+            return RetrieveAST(ResourceType.FILE, args if args else ["README.md"])
         elif head == "TREE":
-            return RetrieveAST(ResourceType.TREE, tokens[1] if len(tokens) > 1 else ".")
+            return RetrieveAST(ResourceType.TREE, args if args else ["."])
         elif head == "SEARCH":
-            return RetrieveAST(ResourceType.SEARCH, " ".join(tokens[1:]))
+            return RetrieveAST(ResourceType.SEARCH, [" ".join(args)])
+        elif head == "DIFF":
+            return RetrieveAST(ResourceType.DIFF, args if args else ["."])
+        elif head == "STATUS":
+            return RetrieveAST(ResourceType.STATUS, ["."])
         else:
-            # Fallback para nomes de especificações/arquivos diretos
-            target = tokens[0] if tokens[0].endswith(".md") else f"{tokens[0]}.md"
-            return RetrieveAST(ResourceType.FILE, target)
+            # Tratamento para lista direta de arquivos se o subcomando for omitido
+            files = [t if t.endswith(".md") else f"{t}.md" for t in clean]
+            return RetrieveAST(ResourceType.FILE, files)
 
     def lower_to_intent(self, ast_node: RetrieveAST) -> Intent:
-        if ast_node.resource_type == ResourceType.TREE:
-            kind = IntentKind.QUERY_STATE
-        elif ast_node.resource_type == ResourceType.SEARCH:
-            kind = IntentKind.QUERY_STATE
+        resolved_targets = []
+
+        if ast_node.resource_type in (ResourceType.FILE, ResourceType.TREE):
+            for target in ast_node.targets:
+                p = Path(target)
+                c1 = Path.home() / ".termiris" / p
+                c2 = p.resolve()
+
+                if c1.exists():
+                    resolved_targets.append(str(c1))
+                elif c2.exists():
+                    resolved_targets.append(str(c2))
+                else:
+                    # Se não existir, mantém o relativo para o ISA decidir o aviso de erro
+                    resolved_targets.append(str(p))
         else:
-            kind = IntentKind.READ_RESOURCE
+            resolved_targets = ast_node.targets
 
         return Intent(
-            kind=kind,
-            target=ast_node.target,
-            metadata={"sub_type": ast_node.resource_type.name}
+            kind=IntentKind.READ_RESOURCE,
+            target=" ".join(resolved_targets),
+            metadata={
+                "sub_type": ast_node.resource_type.name,
+                "targets_list": resolved_targets
+            }
         )
 
     def lower_to_operations(self, intent: Intent) -> List[Operation]:
         sub_type = intent.metadata.get("sub_type")
+        targets = intent.metadata.get("targets_list", [intent.target])
 
+        # Se for TREE, envia instrução de LIST/TREE em vez de tentar ler como arquivo
         if sub_type == "TREE":
-            return [Operation(instruction=PrimitiveISA.LIST, payload={"path": intent.target})]
-        elif sub_type == "SEARCH":
-            return [Operation(instruction=PrimitiveISA.SEARCH, payload={"query": intent.target})]
-        else:
             return [
                 Operation(
-                    instruction=PrimitiveISA.READ,
-                    payload={"target": intent.target, "fallback_dir": "protocol"}
+                    instruction=PrimitiveISA.LIST,
+                    payload={"path": targets[0] if targets else "."}
                 )
             ]
+
+        # Operações de leitura/injeção para arquivos
+        return [
+            Operation(
+                instruction=PrimitiveISA.SNAPSHOT,
+                payload={
+                    "action": "INJECT_RESOURCE",
+                    "resource_type": sub_type,
+                    "targets": targets
+                }
+            )
+        ]

@@ -1,18 +1,28 @@
-import sys, unittest
+import sys
+import unittest
 from pathlib import Path
-sys.path.insert(0, str(Path.home() / ".termiris" / "lib"))
-from models import DomainOperation, OperationType, Artifact, ArtifactMetadata, ResourceReference
+
+LIB_DIR = Path.home() / ".termiris" / "lib"
+if str(LIB_DIR) not in sys.path:
+    sys.path.insert(0, str(LIB_DIR))
+
+from protocol.isa import Operation, PrimitiveISA
 from runtime.engine import RuntimeEngine
 
 class TestRuntimeEngine(unittest.TestCase):
     def test_apply_operation_generates_snapshot(self):
         engine = RuntimeEngine()
-        artifact = Artifact(metadata=ArtifactMetadata(id="tp_test", artifact_type="protocol", priority=100), resource=ResourceReference(uri="filesystem:///tmp/test.md"))
-        result = engine.apply(DomainOperation(type=OperationType.INGEST_ARTIFACT, artifact=artifact))
+        bootstrap_card = Path.home() / ".termiris" / "tp" / "bootstrap" / "000-bootstrap.card"
+        
+        op = Operation(
+            instruction=PrimitiveISA.SNAPSHOT,
+            payload={"file_path": str(bootstrap_card)}
+        )
+        
+        result = engine.apply(op)
         self.assertTrue(result.success)
         self.assertIsNotNone(result.snapshot)
         self.assertEqual(result.snapshot.generation, 1)
-        self.assertEqual(len(result.snapshot.artifacts), 1)
 
 if __name__ == "__main__":
     unittest.main()
