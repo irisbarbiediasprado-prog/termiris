@@ -1,4 +1,3 @@
-
 #include "socket_server.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -27,7 +26,12 @@ static void socket_server_broadcast(socket_server_t *server) {
         }
 
         if (n > 0) {
-            ssize_t written = write((*curr)->fd, buf, n);
+            fprintf(stderr,
+                "[SOCKET] %zd bytes: %.*s\n",
+                n,
+                (int)n,
+                buf);
+	    ssize_t written = write((*curr)->fd, buf, n);
             if (written <= 0) {
                 client_node_t *tmp = *curr;
                 close(tmp->fd);

@@ -1,9 +1,8 @@
-
 CC = gcc
 CFLAGS = -Wall -Wextra -std=c99 -Iinclude -D_GNU_SOURCE
 LDFLAGS = -lutil
 
-SRCS = src/main.c src/event_loop.c src/ring_buffer.c src/socket_server.c src/pty_proxy.c
+SRCS = src/main.c src/event_loop.c src/ring_buffer.c src/socket_server.c src/pty_proxy.c src/protocol_extractor.c src/terminal_emulator.c
 OBJS = $(SRCS:.c=.o)
 TARGET = mitl
 

@@ -1,54 +1,50 @@
 #include "protocol_extractor.h"
 
+#include <stdint.h>
 #include <string.h>
 
-void protocol_extractor_init(protocol_extractor_t *pe) {
-    pe->len = 0;
+static uint64_t fnv1a(const char *s, size_t n) {
+    uint64_t h = 1469598103934665603ULL;
+
+    for (size_t i = 0; i < n; i++) {
+        h ^= (unsigned char)s[i];
+        h *= 1099511628211ULL;
+    }
+
+    return h;
 }
 
-void protocol_extractor_feed(
+void protocol_extractor_init(protocol_extractor_t *pe) {
+    pe->last_hash = 0;
+}
+
+void protocol_extractor_scan(
     protocol_extractor_t *pe,
-    const unsigned char *data,
-    size_t len,
+    const char *screen,
     protocol_tag_callback cb,
     void *user_data
 ) {
-    for (size_t i = 0; i < len; i++) {
-        unsigned char c = data[i];
+    const char *p = screen;
 
-        /* buffer cheio: reinicia procurando próxima tag */
-        if (pe->len >= PROTOCOL_EXTRACTOR_MAX - 1)
-            pe->len = 0;
+    while ((p = strstr(p, "<<")) != NULL) {
 
-        pe->buffer[pe->len++] = c;
+        const char *end = strstr(p + 2, ">>");
+        if (!end)
+            break;
 
-        /* ainda não tem "<<": mantém apenas possível '<' */
-        if (pe->len == 1) {
-            if (pe->buffer[0] != '<')
-                pe->len = 0;
-            continue;
+        size_t len = (size_t)(end - p + 2);
+
+        uint64_t hash = fnv1a(p, len);
+
+        if (hash != pe->last_hash) {
+            pe->last_hash = hash;
+            cb(
+                (const unsigned char *)p,
+                len,
+                user_data
+            );
         }
 
-        if (pe->len == 2) {
-            if (pe->buffer[0] != '<' || pe->buffer[1] != '<') {
-                if (pe->buffer[1] == '<') {
-                    pe->buffer[0] = '<';
-                    pe->len = 1;
-                } else {
-                    pe->len = 0;
-                }
-            }
-            continue;
-        }
-
-        /* fechou ">>" */
-        if (pe->buffer[pe->len - 2] == '>' &&
-            pe->buffer[pe->len - 1] == '>') {
-
-            if (cb)
-                cb(pe->buffer, pe->len, user_data);
-
-            pe->len = 0;
-        }
+        p = end + 2;
     }
 }
