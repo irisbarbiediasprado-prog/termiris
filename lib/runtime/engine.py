@@ -1,7 +1,8 @@
 from pathlib import Path
 from typing import List
 
-from models import Operation, RuntimeResult, Artifact, ResourceReference
+from protocol.isa import Operation
+from models import RuntimeResult, Artifact, ResourceReference
 from protocol.isa import PrimitiveISA
 from runtime.repository import ArtifactRepository
 from runtime.emitter import SnapshotEmitter

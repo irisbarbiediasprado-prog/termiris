@@ -1,5 +1,6 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum, auto
+from typing import Any, Dict
 
 class PrimitiveISA(Enum):
     READ     = auto()
@@ -16,4 +17,4 @@ class PrimitiveISA(Enum):
 @dataclass(frozen=True)
 class Operation:
     instruction: PrimitiveISA
-    payload: dict
+    payload: Dict[str, Any] = field(default_factory=dict)

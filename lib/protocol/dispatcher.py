@@ -6,7 +6,8 @@ LIB_DIR = Path.home() / ".termiris" / "lib"
 if str(LIB_DIR) not in sys.path:
     sys.path.insert(0, str(LIB_DIR))
 
-from models import Operation, RuntimeResult
+from protocol.isa import Operation
+from models import RuntimeResult
 from protocol.kernel import CommandRouter, ProtocolKernel
 from runtime.engine import RuntimeEngine
 

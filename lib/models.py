@@ -7,10 +7,6 @@ from protocol.isa import PrimitiveISA
 class ResourceReference:
     uri: str
 
-@dataclass(frozen=True)
-class Operation:
-    instruction: PrimitiveISA
-    payload: Dict[str, Any] = field(default_factory=dict)
 
 @dataclass
 class Artifact:
