@@ -7,7 +7,9 @@ class BackendRegistry:
     def __init__(self):
         self._registry: Dict[str, Backend] = {}
 
-    def register(self, name: str, backend):
+    def register(self, name: str, backend: Backend):
+        if not isinstance(backend, Backend):
+            raise TypeError(f"Backend inválido: {type(backend).__name__}")
         self._registry[name] = backend
 
     def resolve(self, name: str):
