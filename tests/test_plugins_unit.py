@@ -1,5 +1,6 @@
 import pytest
 from protocol.ir import IntentKind, Intent
+from protocol.compiler import ProtocolCompiler
 from protocol.isa import PrimitiveISA, Operation
 from protocol.plugins.retrieve import RetrievePlugin, ResourceType
 from protocol.plugins.bootstrap import BootstrapPlugin
@@ -35,7 +36,8 @@ class TestRetrievePlugin:
     def test_lower_to_operations(self, plugin):
         ast = plugin.parse_ast(["FILE", "script.py"])
         intent = plugin.lower_to_intent(ast)
-        operations = plugin.lower_to_operations(intent)
+        compiler = ProtocolCompiler()
+        operations = compiler.compile(intent)
 
         assert len(operations) == 1
         assert operations[0].instruction == PrimitiveISA.SNAPSHOT
@@ -59,7 +61,8 @@ class TestBootstrapPlugin:
     def test_full_pipeline(self, plugin):
         ast = plugin.parse_ast([])
         intent = plugin.lower_to_intent(ast)
-        operations = plugin.lower_to_operations(intent)
+        compiler = ProtocolCompiler()
+        operations = compiler.compile(intent)
 
         assert intent.kind == IntentKind.QUERY_STATE
         # Em tests/test_plugins_unit.py:

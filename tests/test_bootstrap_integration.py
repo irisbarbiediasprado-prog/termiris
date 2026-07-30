@@ -1,5 +1,6 @@
 from pathlib import Path
 from protocol.plugins.bootstrap import BootstrapPlugin
+from protocol.compiler import ProtocolCompiler
 from protocol.isa import PrimitiveISA
 
 def test_bootstrap_e2e_integration():
@@ -11,7 +12,8 @@ def test_bootstrap_e2e_integration():
     # 2. Roda a pipeline de compilação interna
     ast = plugin.parse_ast([])
     intent = plugin.lower_to_intent(ast)
-    operations = plugin.lower_to_operations(intent)
+    compiler = ProtocolCompiler()
+    operations = compiler.compile(intent)
 
     # 3. Valida a instrução ISA gerada
     op = operations[0]

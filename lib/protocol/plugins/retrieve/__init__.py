@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import List
 from protocol.base import ProtocolPlugin
 from protocol.ir import Intent, IntentKind
-from protocol.isa import Operation, PrimitiveISA
+from protocol.isa import Operation
 
 class ResourceType(Enum):
     FILE = auto()
@@ -80,26 +80,5 @@ class RetrievePlugin(ProtocolPlugin):
         )
 
     def lower_to_operations(self, intent: Intent) -> List[Operation]:
-        sub_type = intent.metadata.get("sub_type")
-        targets = intent.metadata.get("targets_list", [intent.target])
+        raise NotImplementedError("Operation generation moved to ProtocolCompiler.")
 
-        # Se for TREE, envia instrução de LIST/TREE em vez de tentar ler como arquivo
-        if sub_type == "TREE":
-            return [
-                Operation(
-                    instruction=PrimitiveISA.LIST,
-                    payload={"path": targets[0] if targets else "."}
-                )
-            ]
-
-        # Operações de leitura/injeção para arquivos
-        return [
-            Operation(
-                instruction=PrimitiveISA.SNAPSHOT,
-                payload={
-                    "action": "INJECT_RESOURCE",
-                    "resource_type": sub_type,
-                    "targets": targets
-                }
-            )
-        ]

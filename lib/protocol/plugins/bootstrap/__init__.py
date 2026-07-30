@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import List
 from protocol.base import ProtocolPlugin
 from protocol.ir import Intent, IntentKind
-from protocol.isa import Operation, PrimitiveISA
+from protocol.isa import Operation
 
 @dataclass(frozen=True)
 class BootstrapAST:
@@ -29,12 +29,5 @@ class BootstrapPlugin(ProtocolPlugin):
         )
 
     def lower_to_operations(self, intent: Intent) -> List[Operation]:
-        return [
-            Operation(
-                instruction=PrimitiveISA.SNAPSHOT,
-                payload={
-                    "action": "BOOTSTRAP_GENESIS",
-                    "file_path": str(self.target_file)  # <--- O caminho exato vai direto na Operation!
-                }
-            )
-        ]
+        raise NotImplementedError("Operation generation moved to ProtocolCompiler.")
+

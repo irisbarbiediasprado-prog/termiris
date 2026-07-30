@@ -1,26 +1,54 @@
 from abc import ABC, abstractmethod
-from typing import List, Any
+from typing import Any, List
+
 from protocol.ir import Intent
 from protocol.isa import Operation
 
+
 class ProtocolPlugin(ABC):
+    """
+    Contrato canônico de um plugin do protocolo.
+
+    Pipeline:
+
+        tokens
+           ↓
+        parse_ast()
+           ↓
+      lower_to_intent()
+           ↓
+    lower_to_operations()
+
+    A etapa de compilação é orquestrada pelo ProtocolCompiler.
+    """
+
     @property
     @abstractmethod
     def command(self) -> str:
-        """Comando de alto nível (Ex: RETRIEVE, BOOTSTRAP)"""
-        pass
+        """Nome do comando exposto pelo plugin."""
+        raise NotImplementedError
 
     @abstractmethod
     def parse_ast(self, tokens: List[str]) -> Any:
-        """Estágio 1: Gramática / Tokens -> AST"""
-        pass
+        """
+        Tokens -> AST
+        """
+        raise NotImplementedError
 
     @abstractmethod
     def lower_to_intent(self, ast_node: Any) -> Intent:
-        """Estágio 2: Semântica / AST -> IR (Intent)"""
-        pass
+        """
+        AST -> Intent (IR)
+        """
+        raise NotImplementedError
 
     @abstractmethod
     def lower_to_operations(self, intent: Intent) -> List[Operation]:
-        """Estágio 3: Compilação / IR -> Primitivas da ISA"""
-        pass
+        """
+        Intent -> ISA
+
+        Mantido por compatibilidade durante a migração.
+        Em uma etapa futura esta responsabilidade será
+        movida integralmente para ProtocolCompiler.
+        """
+        raise NotImplementedError
