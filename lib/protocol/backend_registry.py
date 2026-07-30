@@ -1,5 +1,6 @@
 from typing import Dict
 from protocol.isa_backend import ISABackend
+from protocol.filesystem_backend import FilesystemBackend
 from protocol.backend import Backend
 
 
@@ -20,3 +21,4 @@ class BackendRegistry:
 
 backend_registry = BackendRegistry()
 backend_registry.register("default", ISABackend())
+backend_registry.register("filesystem", FilesystemBackend())
