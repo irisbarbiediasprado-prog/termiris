@@ -2,53 +2,58 @@ from abc import ABC, abstractmethod
 from typing import Dict, List
 
 from protocol.ir import Intent, IntentKind
-from protocol.isa import Operation, PrimitiveISA
+from protocol.plan import MigrationPlan, MigrationStep
+from protocol.isa_backend import ISABackend
 
 
 class IntentCompiler(ABC):
     @abstractmethod
-    def compile(self, intent: Intent) -> List[Operation]:
+    def compile(self, intent: Intent) -> MigrationPlan:
         raise NotImplementedError
 
 
 class ReadResourceCompiler(IntentCompiler):
-    def compile(self, intent: Intent) -> List[Operation]:
+    def compile(self, intent: Intent) -> MigrationPlan:
         subtype = intent.metadata["sub_type"]
         targets = intent.metadata["targets_list"]
 
         if subtype == "TREE":
-            return [
-                Operation(
-                    instruction=PrimitiveISA.LIST,
-                    payload={
-                        "path": targets[0],
+            return MigrationPlan(
+                steps=[
+                    MigrationStep(
+                        action="LIST_DIRECTORY",
+                        target=targets[0],
+                        parameters={"path": targets[0]},
+                    )
+                ]
+            )
+
+        return MigrationPlan(
+            steps=[
+                MigrationStep(
+                    action="INJECT_RESOURCE",
+                    target=targets[0] if targets else "",
+                    parameters={
+                        "resource_type": subtype,
+                        "targets": targets,
                     },
                 )
             ]
-
-        return [
-            Operation(
-                instruction=PrimitiveISA.SNAPSHOT,
-                payload={
-                    "action": "INJECT_RESOURCE",
-                    "resource_type": subtype,
-                    "targets": targets,
-                },
-            )
-        ]
+        )
 
 
 class QueryStateCompiler(IntentCompiler):
-    def compile(self, intent: Intent) -> List[Operation]:
-        return [
-            Operation(
-                instruction=PrimitiveISA.SNAPSHOT,
-                payload={
-                    "action": "BOOTSTRAP_GENESIS",
-                    "file_path": intent.metadata["source_file"],
-                },
-            )
-        ]
+    def compile(self, intent: Intent) -> MigrationPlan:
+        source_file = intent.metadata["source_file"]
+        return MigrationPlan(
+            steps=[
+                MigrationStep(
+                    action="BOOTSTRAP_GENESIS",
+                    target=source_file,
+                    parameters={"file_path": source_file},
+                )
+            ]
+        )
 
 
 class CompilerRegistry:
@@ -59,34 +64,18 @@ class CompilerRegistry:
         self._registry[kind] = compiler
 
     def resolve(self, kind: IntentKind) -> IntentCompiler:
-        try:
-            return self._registry[kind]
-        except KeyError:
-            raise NotImplementedError(
-                f"Nenhum compilador registrado para {kind}"
-            )
+        return self._registry[kind]
 
 
 class ProtocolCompiler:
-    """
-    Fachada do backend de compilação.
-
-    Plugin -> Intent -> CompilerRegistry -> Operation
-    """
-
-    def __init__(self, registry: CompilerRegistry | None = None):
+    def __init__(self, registry=None, backend=None):
         self.registry = registry or CompilerRegistry()
+        self.backend = backend or ISABackend()
 
-        self.registry.register(
-            IntentKind.READ_RESOURCE,
-            ReadResourceCompiler(),
-        )
+        self.registry.register(IntentKind.READ_RESOURCE, ReadResourceCompiler())
+        self.registry.register(IntentKind.QUERY_STATE, QueryStateCompiler())
 
-        self.registry.register(
-            IntentKind.QUERY_STATE,
-            QueryStateCompiler(),
-        )
-
-    def compile(self, intent: Intent) -> List[Operation]:
+    def compile(self, intent: Intent) -> List:
         compiler = self.registry.resolve(intent.kind)
-        return compiler.compile(intent)
+        plan: MigrationPlan = compiler.compile(intent)
+        return self.backend.compile(plan)
