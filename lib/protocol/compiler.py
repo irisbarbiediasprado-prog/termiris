@@ -3,7 +3,7 @@ from typing import Dict, List
 
 from protocol.ir import Intent, IntentKind
 from protocol.plan import MigrationPlan, MigrationStep
-from protocol.isa_backend import ISABackend
+from protocol.backend_registry import backend_registry
 
 
 class IntentCompiler(ABC):
@@ -70,7 +70,7 @@ class CompilerRegistry:
 class ProtocolCompiler:
     def __init__(self, registry=None, backend=None):
         self.registry = registry or CompilerRegistry()
-        self.backend = backend or ISABackend()
+        self.backend = backend or backend_registry.resolve("default")
 
         self.registry.register(IntentKind.READ_RESOURCE, ReadResourceCompiler())
         self.registry.register(IntentKind.QUERY_STATE, QueryStateCompiler())

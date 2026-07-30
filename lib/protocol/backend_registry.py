@@ -1,10 +1,11 @@
 from typing import Dict
 from protocol.isa_backend import ISABackend
+from protocol.backend import Backend
 
 
 class BackendRegistry:
     def __init__(self):
-        self._registry: Dict[str, object] = {}
+        self._registry: Dict[str, Backend] = {}
 
     def register(self, name: str, backend):
         self._registry[name] = backend

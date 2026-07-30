@@ -1,9 +1,10 @@
 from typing import List
 from protocol.isa import Operation, PrimitiveISA
 from protocol.plan import MigrationPlan
+from protocol.backend import Backend
 
 
-class ISABackend:
+class ISABackend(Backend):
     """
     Backend único que traduz o MigrationPlan puramente semântico para a PrimitiveISA.
     """
