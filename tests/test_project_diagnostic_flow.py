@@ -3,7 +3,7 @@ from pathlib import Path
 from analysis.analyzer import Analyzer
 from project.analyzer import ProjectAnalyzer
 from project.diagnostic_engine import ProjectDiagnosticEngine
-from project.matchers import make_legacy_import_matcher
+from project.rules.legacy_import import LegacyImportRule
 
 def test_end_to_end_legacy_import_detection():
     with tempfile.TemporaryDirectory() as tmp:
@@ -14,9 +14,7 @@ def test_end_to_end_legacy_import_detection():
         analyzer = ProjectAnalyzer(Analyzer())
         project_analysis = analyzer.analyze(tmp)
 
-        engine = ProjectDiagnosticEngine(
-            matchers=[make_legacy_import_matcher("optparse")]
-        )
+        engine = ProjectDiagnosticEngine(rules=[LegacyImportRule()])
         diagnostic = engine.run(project_analysis)
 
         assert len(diagnostic.findings) == 1

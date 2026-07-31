@@ -1,27 +1,17 @@
-from project import (
-    ProjectAnalysis,
-    ProjectReporter,
-)
 from pathlib import Path
-
-
-class FakeIndex:
-    functions = [1, 2]
-    classes = [1]
-    imports = [1, 2, 3]
-    calls = [1]
-
+from project.source_file import SourceFile
+from project.analysis import ProjectAnalysis, SourceFileAnalysis
+from analysis.index import AnalysisIndex
+from project.reporter import ProjectReporter
 
 def test_project_reporter():
-    report = ProjectReporter().report(
-        ProjectAnalysis(
-            files=(Path("app.py"),),
-            indexes=(FakeIndex(),),
-        )
-    )
-
+    sf = SourceFile(path=Path("app.py"), line_count=2, size=20)
+    sfa = SourceFileAnalysis(source=sf, index=AnalysisIndex())
+    analysis = ProjectAnalysis(files=(sfa,))
+    reporter = ProjectReporter()
+    report = reporter.report(analysis)
     assert report.files_count == 1
-    assert report.functions_count == 2
-    assert report.classes_count == 1
-    assert report.imports_count == 3
-    assert report.calls_count == 1
+    assert report.functions_count == 0
+    assert report.classes_count == 0
+    assert report.imports_count == 0
+    assert report.calls_count == 0

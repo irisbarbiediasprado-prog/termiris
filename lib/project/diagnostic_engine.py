@@ -1,21 +1,14 @@
-from pathlib import Path
-from typing import Callable, Iterable
+from typing import Iterable
 from .analysis import ProjectAnalysis
 from .diagnostic import ProjectDiagnostic
-from .finding import ProjectFinding
-
-ProjectMatcher = Callable[[object, Path], ProjectFinding | None]
+from .diagnostic_rule import DiagnosticRule
 
 class ProjectDiagnosticEngine:
-    def __init__(self, matchers: Iterable[ProjectMatcher]):
-        self._matchers = tuple(matchers)
+    def __init__(self, rules: Iterable[DiagnosticRule]):
+        self._rules = tuple(rules)
 
-    def run(self, project_analysis: ProjectAnalysis) -> ProjectDiagnostic:
-        findings: list[ProjectFinding] = []
-        for file_path, index in zip(project_analysis.files, project_analysis.indexes):
-            for fact in index.iter_facts():
-                for matcher in self._matchers:
-                    finding = matcher(fact, file_path)
-                    if finding is not None:
-                        findings.append(finding)
+    def run(self, analysis: ProjectAnalysis) -> ProjectDiagnostic:
+        findings = []
+        for rule in self._rules:
+            findings.extend(rule.run(analysis))
         return ProjectDiagnostic(findings=tuple(findings))
