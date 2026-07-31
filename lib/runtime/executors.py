@@ -3,31 +3,40 @@ from pathlib import Path
 from typing import Dict
 
 from models import Artifact, ResourceReference, RuntimeResult
-from protocol.isa import Operation, PrimitiveISA
+from protocol.isa import Operation
 from runtime.repository import ArtifactRepository
 from runtime.emitter import SnapshotEmitter
+from protocol.executor import Executor
 
 
 class OperationExecutor(ABC):
     @abstractmethod
-    def execute(
+    def __init__(
         self,
-        operation: Operation,
         repository: ArtifactRepository,
         emitter: SnapshotEmitter,
         state: Dict,
-    ) -> RuntimeResult:
+    ):
+        self.repository = repository
+        self.emitter = emitter
+        self.state = state
+
+    def execute(self, operation: Operation) -> RuntimeResult:
         raise NotImplementedError
 
 
-class SnapshotExecutor(OperationExecutor):
-    def execute(
+class SnapshotExecutor(Executor):
+    def __init__(
         self,
-        operation: Operation,
         repository: ArtifactRepository,
         emitter: SnapshotEmitter,
         state: Dict,
-    ) -> RuntimeResult:
+    ):
+        self.repository = repository
+        self.emitter = emitter
+        self.state = state
+
+    def execute(self, operation: Operation) -> RuntimeResult:
 
         payload = operation.payload or {}
 
@@ -37,21 +46,21 @@ class SnapshotExecutor(OperationExecutor):
         if legacy:
             targets.append(legacy)
 
-        artifacts = state.setdefault("artifacts", [])
+        artifacts = self.state.setdefault("artifacts", [])
 
         for raw in targets:
             uri = raw if "://" in raw else f"filesystem://{Path(raw).resolve()}"
 
             artifacts.append(
-                repository.fetch(
+                self.repository.fetch(
                     ResourceReference(uri=uri)
                 )
             )
 
-        state["generation"] = state.get("generation", 0) + 1
+        self.state["generation"] = self.state.get("generation", 0) + 1
 
-        snapshot = emitter.emit(
-            state["generation"],
+        snapshot = self.emitter.emit(
+            self.state["generation"],
             artifacts,
         )
 
@@ -60,17 +69,3 @@ class SnapshotExecutor(OperationExecutor):
             snapshot=snapshot,
         )
 
-
-class ExecutorRegistry:
-    def __init__(self):
-        self._registry = {
-            PrimitiveISA.SNAPSHOT: SnapshotExecutor(),
-        }
-
-    def resolve(self, instruction):
-        try:
-            return self._registry[instruction]
-        except KeyError:
-            raise NotImplementedError(
-                f"Nenhum executor registrado para {instruction}"
-            )

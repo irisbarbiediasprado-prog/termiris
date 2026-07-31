@@ -4,6 +4,7 @@ cache/
 test/
 tmp/
 __pycache__/
+runtime/event-parser.log
 
 # Python Cache & Bytecode
 __pycache__/
