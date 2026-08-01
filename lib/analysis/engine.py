@@ -8,19 +8,12 @@ class AnalysisEngine:
     def analyze(self, index):
         findings = []
 
-        items = (
-            index.functions
-            + index.classes
-            + index.imports
-            + index.calls
-        )
-
         for matcher in self.matchers:
-            for item in items:
+            for item in index.iter_facts():
                 if matcher.matches(item):
                     findings.append(
                         Finding(
-                            kind=matcher.__class__.__name__,
+                            kind=getattr(matcher, "rule_id", matcher.__class__.__name__),
                             message=f"{matcher.__class__.__name__} detectou {item}",
                             item=item,
                         )

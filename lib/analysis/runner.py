@@ -37,4 +37,10 @@ class AnalysisRunner:
             if hasattr(visitor, "calls"):
                 index.calls.extend(visitor.calls)
 
+            if hasattr(visitor, "comments"):
+                index.comments.extend(visitor.comments)
+
+            if hasattr(visitor, "exceptions"):
+                index.exceptions.extend(visitor.exceptions)
+
         return index

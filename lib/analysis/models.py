@@ -24,3 +24,15 @@ class ImportInfo:
 class CallInfo:
     function: str
     line: int | None = None
+
+
+@dataclass(frozen=True)
+class CommentInfo:
+    text: str
+    line: int | None = None
+
+
+@dataclass(frozen=True)
+class ExceptionInfo:
+    line: int | None = None
+    is_bare: bool = False

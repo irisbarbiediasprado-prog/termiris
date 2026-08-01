@@ -2,7 +2,7 @@ from typing import Iterable
 from analysis.models import ImportInfo
 from project.diagnostic_rule import DiagnosticRule
 from project.analysis import ProjectAnalysis
-from project.finding import ProjectFinding
+from project.finding import ProjectFinding, Severity
 
 LEGACY_IMPORT_MAP = {
     "optparse": "argparse",
@@ -21,8 +21,10 @@ class LegacyImportRule(DiagnosticRule):
                 if isinstance(fact, ImportInfo) and fact.module in LEGACY_IMPORT_MAP:
                     new_module = LEGACY_IMPORT_MAP[fact.module]
                     yield ProjectFinding(
-                        kind="legacy_import",
+                        rule_id="legacy_import",
                         message=f"Deprecated import: {fact.module} (use {new_module})",
                         file=fa.source.path,
+                        severity=Severity.WARNING,
+                        category="imports",
                         item=fact,
                     )

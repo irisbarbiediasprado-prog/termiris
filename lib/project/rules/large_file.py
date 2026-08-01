@@ -1,7 +1,7 @@
 from typing import Iterable
 from project.diagnostic_rule import DiagnosticRule
 from project.analysis import ProjectAnalysis
-from project.finding import ProjectFinding
+from project.finding import ProjectFinding, Severity
 
 MAX_LINES = 500
 
@@ -10,7 +10,9 @@ class LargeFileRule(DiagnosticRule):
         for fa in analysis.files:
             if fa.source.line_count > MAX_LINES:
                 yield ProjectFinding(
-                    kind="large_file",
+                    rule_id="large_file",
                     message=f"File exceeds {MAX_LINES} lines ({fa.source.line_count})",
                     file=fa.source.path,
+                    severity=Severity.WARNING,
+                    category="complexity",
                 )
