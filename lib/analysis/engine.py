@@ -1,4 +1,5 @@
 from .finding import Finding
+from project.rules.ids import RuleId
 
 
 class AnalysisEngine:
@@ -11,9 +12,11 @@ class AnalysisEngine:
         for matcher in self.matchers:
             for item in index.iter_facts():
                 if matcher.matches(item):
+                    # Matchers que definem rule_id usam ele; senão, nome da classe (legado)
+                    rule_id = getattr(matcher, "rule_id", matcher.__class__.__name__)
                     findings.append(
                         Finding(
-                            kind=getattr(matcher, "rule_id", matcher.__class__.__name__),
+                            kind=rule_id,
                             message=f"{matcher.__class__.__name__} detectou {item}",
                             item=item,
                         )

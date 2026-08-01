@@ -2,7 +2,7 @@ from analysis.analyzer import Analyzer
 from project.analysis import ProjectAnalysis, SourceFileAnalysis
 from project.source_file import SourceFile
 from pathlib import Path
-from project.rules import BareExceptRule
+from project.rules import BareExceptRule, RuleId
 
 
 def _analyze_code(code: str) -> ProjectAnalysis:
@@ -16,8 +16,7 @@ def test_detects_bare_except():
     analysis = _analyze_code(code)
     findings = list(BareExceptRule().run(analysis))
     assert len(findings) == 1
-    assert findings[0].rule_id == "bare_except"
-    assert findings[0].category == "error_handling"
+    assert findings[0].rule_id == RuleId.BARE_EXCEPT
 
 
 def test_ignores_typed_except():

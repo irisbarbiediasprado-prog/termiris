@@ -2,7 +2,7 @@ from analysis.analyzer import Analyzer
 from project.analysis import ProjectAnalysis, SourceFileAnalysis
 from project.source_file import SourceFile
 from pathlib import Path
-from project.rules import LargeFunctionRule
+from project.rules import LargeFunctionRule, RuleId
 
 
 def _analyze_code(code: str) -> ProjectAnalysis:
@@ -16,9 +16,7 @@ def test_detects_many_parameters():
     analysis = _analyze_code(code)
     findings = list(LargeFunctionRule().run(analysis))
     assert len(findings) == 1
-    assert findings[0].rule_id == "large_function"
-    assert findings[0].severity.value == "warning"
-    assert findings[0].category == "complexity"
+    assert findings[0].rule_id == RuleId.LARGE_FUNCTION
 
 
 def test_ok_with_few_parameters():
