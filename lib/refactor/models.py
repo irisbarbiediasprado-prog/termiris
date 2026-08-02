@@ -1,9 +1,28 @@
 from dataclasses import dataclass
-from typing import Any
 
 
 @dataclass(frozen=True)
-class Operation:
-    kind: str
-    metadata: dict[str, Any] | None = None
-    reference: str | None = None
+class Code:
+    language: str
+    source: str
+
+
+@dataclass(frozen=True)
+class Function:
+    name: str
+    signature: str = "(self)"
+    body: Code = Code("python", "pass")
+
+
+@dataclass(frozen=True)
+class Class:
+    name: str
+    methods: tuple[Function, ...] = ()
+
+
+@dataclass(frozen=True)
+class SourceFile:
+    path: str
+    language: str
+    imports: tuple[str, ...] = ()
+    declarations: tuple[Class | Function, ...] = ()
