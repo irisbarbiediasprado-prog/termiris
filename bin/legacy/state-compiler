@@ -1,6 +1,0 @@
-#!/usr/bin/env python3
-import os, sys
-LIB_DIR = os.path.expanduser("~/.termiris/lib")
-if LIB_DIR not in sys.path: sys.path.insert(0, LIB_DIR)
-from termiris.state_compiler import main
-if __name__ == "__main__": main()

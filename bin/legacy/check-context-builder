@@ -1,8 +1,0 @@
-#!/data/data/com.termux/files/usr/bin/bash
-set -euo pipefail
-
-echo "=== SEARCH ==="
-"$HOME/.termiris/bin/context-builder" SEARCH context-builder
-
-echo
-echo "rc=$?"
