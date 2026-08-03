@@ -5,19 +5,6 @@ class TargetResolver(ABC):
     @abstractmethod
     def resolve(self, symbol: str) -> Path | None:...
 
-class FileSystemTargetResolver(TargetResolver):
-    def __init__(self, root: Path = Path("lib")):
-        self.root = Path(root)
-    def resolve(self, symbol: str) -> Path | None:
-        base = symbol.split(":")[-1].split(".")[0]
-        for py in self.root.rglob("*.py"):
-            try:
-                if f"class {base}" in py.read_text():
-                    return py
-            except:
-                continue
-        return None
-
 class AnalysisIndexTargetResolver(TargetResolver):
     """v1.1 - fast por padrão (1.88s), full atrás de flag."""
     _GLOBAL_CACHE: dict[tuple[str, str], dict[str, Path]] = {}

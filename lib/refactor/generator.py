@@ -1,6 +1,5 @@
 from analysis.finding import Finding
 from .operations import ReplaceImportOperation
-from .rules import MigrationRule
 from project.rules.ids import RuleId
 
 # Compatibilidade: mapeia nomes antigos de classes para rule_ids canônicos
