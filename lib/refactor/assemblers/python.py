@@ -62,27 +62,59 @@ class PythonAssembler(Assembler):
             return []
 
         params = []
-        for part in sig.split(","):
+        for part in self._split_params(sig):
             part = part.strip()
             if not part:
                 continue
 
-            # Verifica anotação (':')
+            # Separa default (=)
+            default = None
+            if "=" in part:
+                name_part, default_part = part.rsplit("=", 1)
+                part = name_part.strip()
+                default = cst.parse_expression(default_part.strip())
+
+            # Separa anotação (:)
+            annotation = None
             if ":" in part:
-                name_part, type_part = part.split(":", 1)
+                name_part, type_part = part.rsplit(":", 1)
                 name = name_part.strip()
+                type_str = type_part.strip()
                 annotation = cst.Annotation(
-                    cst.parse_expression(type_part.strip())
+                    cst.parse_expression(type_str)
                 )
             else:
                 name = part
-                annotation = None
 
             params.append(
                 cst.Param(
                     name=cst.Name(name),
                     annotation=annotation,
+                    default=default,
                 )
             )
 
         return params
+
+    def _split_params(self, sig: str) -> list[str]:
+        """Divide parâmetros respeitando Union types com |."""
+        parts = []
+        current = []
+        depth = 0
+
+        for char in sig:
+            if char in "([{":
+                depth += 1
+            elif char in ")]}":
+                depth -= 1
+
+            if char == "," and depth == 0:
+                parts.append("".join(current).strip())
+                current = []
+            else:
+                current.append(char)
+
+        if current:
+            parts.append("".join(current).strip())
+
+        return parts

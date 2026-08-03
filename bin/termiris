@@ -1,0 +1,74 @@
+#!/usr/bin/env python3
+import sys
+from pathlib import Path
+
+# Garante que a pasta lib/ esteja no path
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "lib"))
+
+import typer
+from rich.console import Console
+from rich.panel import Panel
+
+from analysis.analyzer import Analyzer
+from project.analyzer import ProjectAnalyzer
+from project.statistics_engine import StatisticsEngine
+from project.diagnostic_engine import ProjectDiagnosticEngine
+from project.rules import (
+    LegacyImportRule,
+    LargeFileRule,
+    LargeFunctionRule,
+    TodoCommentRule,
+    BareExceptRule,
+)
+from project.renderers import ConsoleRenderer
+
+app = typer.Typer(help="Termiris — análise e diagnóstico de projetos Python")
+console = Console()
+
+@app.command()
+def analyze(
+    path: Path = typer.Argument(
+        ".",
+        exists=True,
+        file_okay=False,
+        dir_okay=True,
+        readable=True,
+        help="Diretório do projeto a ser analisado",
+    ),
+):
+    """Analisa um projeto e mostra estatísticas + diagnósticos."""
+    
+    with console.status("[bold cyan]Analisando projeto...[/bold cyan]", spinner="dots"):
+        analyzer = ProjectAnalyzer(Analyzer())
+        analysis = analyzer.analyze(path)
+
+        stats = StatisticsEngine.compute(analysis)
+        diag_engine = ProjectDiagnosticEngine(rules=[
+            LegacyImportRule(),
+            LargeFileRule(),
+            LargeFunctionRule(),
+            TodoCommentRule(),
+            BareExceptRule(),
+        ])
+        diag = diag_engine.run(analysis)
+
+    # Estatísticas
+    stats_text = ConsoleRenderer.render_statistics(stats, path)
+    console.print(Panel(stats_text, title="[bold blue]Estatísticas[/bold blue]", border_style="blue"))
+
+    # Diagnósticos
+    diag_text = ConsoleRenderer.render_diagnostics(diag, path)
+
+    if diag.findings:
+        console.print(Panel(diag_text, title="[bold yellow]Diagnósticos[/bold yellow]", border_style="yellow"))
+    else:
+        console.print(Panel(
+            "[green]Nenhum problema encontrado.[/green]",
+            title="[bold green]Diagnósticos[/bold green]",
+            border_style="green"
+        ))
+
+
+if __name__ == "__main__":
+    app()

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from .models import SourceFile
+from .models import SourceFile, Target, Transformation
 
 
 @dataclass(frozen=True)
@@ -23,3 +23,10 @@ class CreateFileOperation(Operation):
 @dataclass(frozen=True)
 class CreateSourceFileOperation(Operation):
     source_file: SourceFile
+
+
+@dataclass(frozen=True)
+class UpdateOperation(Operation):
+    """Atualiza um alvo com uma transformação."""
+    target: Target
+    transformation: Transformation
