@@ -5,6 +5,8 @@ test/
 tmp/
 __pycache__/
 runtime/event-parser.log
+runtime/mitl.stdout.log
+.coverage
 
 # Python Cache & Bytecode
 __pycache__/
