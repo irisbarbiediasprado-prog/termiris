@@ -3,13 +3,21 @@ from protocol.isa import Operation, PrimitiveISA
 from protocol.plan import MigrationPlan
 from protocol.backend import Backend
 
-
 class ISABackend(Backend):
     """
-    Backend único que traduz o MigrationPlan puramente semântico para a PrimitiveISA.
+    Backend puro: traduz MigrationPlan semântico para PrimitiveISA.
+    Zero IO aqui - IO fica no RuntimeEngine.
     """
 
+    SUPPORTED = {"LIST_DIRECTORY", "INJECT_RESOURCE", "BOOTSTRAP_GENESIS"}
+
+    def validate(self, plan: MigrationPlan) -> None:
+        for step in plan.steps:
+            if step.action not in self.SUPPORTED:
+                raise ValueError(f"Ação não suportada pelo ISABackend: {step.action}")
+
     def compile(self, plan: MigrationPlan) -> List[Operation]:
+        self.validate(plan)
         operations = []
         for step in plan.steps:
             if step.action == "LIST_DIRECTORY":
@@ -40,6 +48,4 @@ class ISABackend(Backend):
                         },
                     )
                 )
-            else:
-                raise ValueError(f"Ação de migração não suportada pelo ISABackend: {step.action}")
         return operations

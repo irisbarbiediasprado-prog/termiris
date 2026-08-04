@@ -1,7 +1,5 @@
-import re
 from dataclasses import dataclass
 from enum import Enum, auto
-from pathlib import Path
 from typing import List
 from protocol.base import ProtocolPlugin
 from protocol.ir import Intent, IntentKind
@@ -28,7 +26,6 @@ class RetrievePlugin(ProtocolPlugin):
         if not tokens:
             raise ValueError("RETRIEVE vazio")
 
-        # Limpa marcas de streaming
         clean = [t for t in tokens if not t.startswith("<<") and not t.endswith(">>")]
         if not clean:
             clean = tokens
@@ -47,38 +44,18 @@ class RetrievePlugin(ProtocolPlugin):
         elif head == "STATUS":
             return RetrieveAST(ResourceType.STATUS, ["."])
         else:
-            # Tratamento para lista direta de arquivos se o subcomando for omitido
             files = [t if t.endswith(".md") else f"{t}.md" for t in clean]
             return RetrieveAST(ResourceType.FILE, files)
 
     def lower_to_intent(self, ast_node: RetrieveAST) -> Intent:
-        resolved_targets = []
-
-        if ast_node.resource_type in (ResourceType.FILE, ResourceType.TREE):
-            for target in ast_node.targets:
-                p = Path(target)
-                c1 = Path.home() / ".termiris" / p
-                c2 = p.resolve()
-
-                if c1.exists():
-                    resolved_targets.append(str(c1))
-                elif c2.exists():
-                    resolved_targets.append(str(c2))
-                else:
-                    # Se não existir, mantém o relativo para o ISA decidir o aviso de erro
-                    resolved_targets.append(str(p))
-        else:
-            resolved_targets = ast_node.targets
-
         return Intent(
             kind=IntentKind.READ_RESOURCE,
-            target=" ".join(resolved_targets),
+            target=" ".join(ast_node.targets),
             metadata={
                 "sub_type": ast_node.resource_type.name,
-                "targets_list": resolved_targets
+                "targets_list": ast_node.targets
             }
         )
 
     def lower_to_operations(self, intent: Intent) -> List[Operation]:
         raise NotImplementedError("Operation generation moved to ProtocolCompiler.")
-

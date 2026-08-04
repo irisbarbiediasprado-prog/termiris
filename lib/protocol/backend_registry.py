@@ -3,6 +3,11 @@ from protocol.isa_backend import ISABackend
 from protocol.filesystem_backend import FilesystemBackend
 from protocol.backend import Backend
 
+class BackendNotFoundError(ValueError):
+    """Contrato violado: backend solicitado não existe no registry."""
+    def __init__(self, name: str):
+        super().__init__(f"Backend não registrado: {name}")
+        self.name = name
 
 class BackendRegistry:
     def __init__(self):
@@ -15,9 +20,8 @@ class BackendRegistry:
 
     def resolve(self, name: str):
         if name not in self._registry:
-            raise ValueError(f"Backend não registrado: {name}")
+            raise BackendNotFoundError(name)
         return self._registry[name]
-
 
 backend_registry = BackendRegistry()
 backend_registry.register("default", ISABackend())

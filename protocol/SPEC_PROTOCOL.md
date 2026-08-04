@@ -1,7 +1,7 @@
 # Termiris Protocol (TP)
 
-Status: Draft
-Version: 0.1
+Status: Consolidated
+Version: 0.2
 Author: Termiris
 Content-Type: text/plain
 
@@ -29,19 +29,9 @@ Um comando possui a forma:
 
 <<VERB TARGET ARGUMENTS...>>
 
-Exemplos:
-
-<<RETRIEVE FILE AGENTS.md>>
-
-<<RETRIEVE TREE lib>>
-
-<<RETRIEVE SEARCH context-builder>>
-
 ---
 
 # 3. Respostas
-
-Toda resposta possui delimitadores explícitos.
 
 Formato:
 
@@ -57,16 +47,9 @@ END <TYPE>
 
 # 4. STATUS
 
-STATUS: OK
+STATUS: OK - operação executada.
 
-A operação foi executada.
-
-STATUS: ERROR
-
-A operação falhou.
-
-Quando ERROR estiver presente,
-o campo ERROR é obrigatório.
+STATUS: ERROR - operação falhou. Quando ERROR, campo ERROR é obrigatório.
 
 ---
 
@@ -75,109 +58,80 @@ o campo ERROR é obrigatório.
 Códigos definidos:
 
 FILE_NOT_FOUND
-
 DIRECTORY_NOT_FOUND
-
 INVALID_ARGUMENT
-
 EMPTY_RESULT
-
 PERMISSION_DENIED
-
 NOT_IMPLEMENTED
-
 INTERNAL_ERROR
+BACKEND_NOT_FOUND
+
+Princípio: erros de domínio devem ser tipados e pertencentes ao protocolo,
+nunca ValueError genérico. Em particular, a resolução de um backend
+inexistente deve produzir um erro tipado do domínio do protocolo.
 
 ---
 
-# 6. RETRIEVE
+# 6. Backend Contract
 
-Família responsável pela obtenção de informações.
+Todo backend deve expor duas fases distintas:
 
-## FILE
+validate(plan) -> None
+  Verifica estrutura do plano. Não produz efeitos colaterais.
 
-Solicita um ou mais arquivos.
+compile(plan) -> List[Operation]
+  Tradução pura: plano semântico para operações primitivas.
+  Deve permanecer livre de efeitos colaterais, sem acesso a filesystem,
+  sem IO, sem execução.
 
-Solicitação
-
-<<RETRIEVE FILE README.md AGENTS.md>>
-
-Resposta
-
-BEGIN RETRIEVE
-
-STATUS: OK
-
-FILE: README.md
-
-...
-
-END FILE
-
-FILE: AGENTS.md
-
-...
-
-END FILE
-
-END RETRIEVE
+A execução é responsabilidade exclusiva do Runtime.
 
 ---
 
-## TREE
+# 7. RETRIEVE
 
-Retorna a árvore de um diretório.
+Família de obtenção de informações.
 
-<<RETRIEVE TREE lib>>
+- FILE: solicita arquivos
+- TREE: retorna árvore de diretório
+- SEARCH: pesquisa por texto
+- DIFF: diferenças
+- STATUS: estado do projeto
 
----
-
-## SEARCH
-
-Pesquisa por texto.
-
-<<RETRIEVE SEARCH context-builder>>
-
----
-
-## DIFF
-
-Retorna diferenças.
-
-<<RETRIEVE DIFF README.md>>
+SEARCH faz parte da linguagem do protocolo, mas sua implementação
+está marcada como adiada para v0.3. Isso separa linguagem suportada
+de estado da implementação.
 
 ---
 
-## STATUS
+# 8. Compatibilidade
 
-Estado do projeto.
+Novos comandos nunca alteram sintaxe existente.
 
-<<RETRIEVE STATUS>>
+Novas funcionalidades como novos VERBs ou TARGETs.
 
----
-
-# 7. Compatibilidade
-
-Novos comandos nunca alteram a sintaxe existente.
-
-Novas funcionalidades devem ser adicionadas como novos VERBs ou novos
-TARGETs.
+Quebras de API pública só após rg confirmar 0 consumidores e testes verdes.
 
 ---
 
-# 8. Futuro
+# 9. Futuro
 
-VERBs planejados
+VERBs planejados: PATCH, RUN, TEST, COMMIT, PLAN, APPLY
 
-PATCH
+RETRIEVE SEARCH - implementação após base v0.2 estável.
 
-RUN
+---
 
-TEST
+# 10. Pureza das Camadas
 
-COMMIT
+Nenhuma etapa anterior pode executar responsabilidades de etapas posteriores.
 
-PLAN
+Em particular:
 
-APPLY
+- Plugins não executam IO.
+- Compilers não acessam o filesystem.
+- Backends não executam operações durante compile().
+- Runtime é o único responsável por materializar efeitos colaterais.
 
+Este princípio resume as fronteiras arquiteturais descobertas no v0.2
+e orienta novos contribuidores sobre onde cada responsabilidade pertence.

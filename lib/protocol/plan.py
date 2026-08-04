@@ -12,7 +12,3 @@ class MigrationStep:
 @dataclass(frozen=True)
 class MigrationPlan:
     steps: List[MigrationStep] = field(default_factory=list)
-
-    def emit(self) -> List[Any]:
-        # Compatibilidade temporária caso algum backend chame emit()
-        return []

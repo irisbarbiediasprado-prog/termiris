@@ -1,7 +1,8 @@
+from pathlib import Path
 from protocol.plan import MigrationPlan, MigrationStep
 from protocol.isa_backend import ISABackend
 from protocol.filesystem_backend import FilesystemBackend
-
+from protocol.isa import PrimitiveISA
 
 def test_same_plan_compiles_in_multiple_backends(tmp_path):
     plan = MigrationPlan(
@@ -21,6 +22,9 @@ def test_same_plan_compiles_in_multiple_backends(tmp_path):
     assert len(fs_result) == 1
 
     assert isa_result[0].payload["path"] == str(tmp_path)
+    assert isa_result[0].instruction == PrimitiveISA.LIST
 
-    assert fs_result[0]["backend"] == "filesystem"
-    assert fs_result[0]["operation"] == "list_directory"
+    # FilesystemBackend agora também retorna Operation puro, sem IO
+    assert fs_result[0].payload["path"] == str(tmp_path)
+    assert fs_result[0].payload["backend"] == "filesystem"
+    assert fs_result[0].instruction == PrimitiveISA.LIST
