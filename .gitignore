@@ -7,6 +7,7 @@ __pycache__/
 runtime/event-parser.log
 runtime/mitl.stdout.log
 .coverage
+fallback_test/
 
 # Python Cache & Bytecode
 __pycache__/
