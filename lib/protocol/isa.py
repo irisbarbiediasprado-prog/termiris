@@ -6,6 +6,7 @@ class PrimitiveISA(Enum):
     READ     = auto()
     WRITE    = auto()
     SEARCH   = auto()
+    BUILD    = auto()
     LIST     = auto()
     PATCH    = auto()
     RUN      = auto()
