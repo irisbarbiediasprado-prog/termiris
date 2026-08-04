@@ -1,6 +1,7 @@
 from protocol.executor_registry import ExecutorRegistry
 from protocol.isa_executor import ISAExecutor
 from runtime.executors import SnapshotExecutor, ListExecutor
+from runtime.search_executor import SearchExecutor
 from protocol.isa import PrimitiveISA
 
 
@@ -18,4 +19,5 @@ def create_executor_registry(repository, emitter=None, state=None):
     registry = ExecutorRegistry()
     registry.register(PrimitiveISA.SNAPSHOT, SnapshotExecutor(repository, emitter, state))
     registry.register(PrimitiveISA.LIST, ListExecutor(repository, emitter, state))
+    registry.register(PrimitiveISA.SEARCH, SearchExecutor(repository, emitter, state))
     return registry

@@ -56,6 +56,27 @@ class QueryStateCompiler(IntentCompiler):
         )
 
 
+class SearchCompiler(IntentCompiler):
+    def compile(self, intent: Intent) -> MigrationPlan:
+        pattern = intent.target
+        return MigrationPlan(
+            steps=[
+                MigrationStep(
+                    action="SEARCH",
+                    target=intent.metadata.get("root", "."),
+                    parameters={
+                        "pattern": pattern,
+                        "root": intent.metadata.get("root", "."),
+                        "max_results": intent.metadata.get("max_results", 200),
+                        "file_types": intent.metadata.get("file_types"),
+                        "case_sensitive": intent.metadata.get("case_sensitive", True),
+                        "regex": intent.metadata.get("regex", False),
+                    },
+                )
+            ]
+        )
+
+
 class CompilerRegistry:
     def __init__(self):
         self._registry: Dict[IntentKind, IntentCompiler] = {}
@@ -74,6 +95,7 @@ class ProtocolCompiler:
 
         self.registry.register(IntentKind.READ_RESOURCE, ReadResourceCompiler())
         self.registry.register(IntentKind.QUERY_STATE, QueryStateCompiler())
+        self.registry.register(IntentKind.SEARCH, SearchCompiler())
 
     def compile(self, intent: Intent) -> List:
         compiler = self.registry.resolve(intent.kind)

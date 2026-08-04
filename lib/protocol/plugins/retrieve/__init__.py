@@ -48,8 +48,9 @@ class RetrievePlugin(ProtocolPlugin):
             return RetrieveAST(ResourceType.FILE, files)
 
     def lower_to_intent(self, ast_node: RetrieveAST) -> Intent:
+        kind = IntentKind.SEARCH if ast_node.resource_type == ResourceType.SEARCH else IntentKind.READ_RESOURCE
         return Intent(
-            kind=IntentKind.READ_RESOURCE,
+            kind=kind,
             target=" ".join(ast_node.targets),
             metadata={
                 "sub_type": ast_node.resource_type.name,
