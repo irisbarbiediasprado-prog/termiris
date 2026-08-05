@@ -14,6 +14,7 @@ class PrimitiveISA(Enum):
     INDEX    = auto()
     SNAPSHOT = auto()
     HELP     = auto()
+    RETRIEVE = auto()
 
 @dataclass(frozen=True)
 class Operation:

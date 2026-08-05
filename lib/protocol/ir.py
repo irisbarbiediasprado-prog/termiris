@@ -3,8 +3,9 @@ from enum import Enum, auto
 
 class IntentKind(Enum):
     READ_RESOURCE = auto()
-    MUTATE_RESOURCE = auto()
     QUERY_STATE = auto()
+    MUTATE_RESOURCE = auto()
+    BOOTSTRAP_GENESIS = auto()
     SEARCH = auto()
     INSPECT_PROTOCOL = auto()
 

@@ -1,22 +1,25 @@
 # Retriever Specification
 
-Status: Draft
-
-Version: 0.1
+**Status:** Draft  
+**Version:** 0.2
 
 ---
 
 # Missão
 
-Permitir que agentes descubram contexto incrementalmente.
+Permitir que agentes descubram conhecimento incrementalmente.
 
-O Retriever não produz contexto.
+O Retriever não produz conhecimento.
 
-O Retriever decide quais Builders devem ser utilizados para produzir o contexto necessário.
+O Retriever apenas resolve recursos solicitados pelo agente e retorna um `Artifact`.
+
+O agente controla a exploração.
+
+O Runtime executa a recuperação.
 
 ---
 
-# Princípios
+# Objetivos
 
 - Recuperação incremental.
 - Responsabilidade única.
@@ -24,148 +27,335 @@ O Retriever decide quais Builders devem ser utilizados para produzir o contexto 
 - Baixo custo.
 - Baixa latência.
 - Artefatos reproduzíveis.
+- Nenhum contexto implícito.
 
-Agentes não recebem o projeto.
+O agente nunca recebe "o projeto inteiro".
 
-Agentes exploram o projeto.
-
----
-
-# Arquitetura
-
-Agente
-
-↓
-
-Retriever
-
-↓
-
-Builders
-
-↓
-
-Processors (opcional)
-
-↓
-
-Artefato
-
-↓
-
-Agente
+O agente descobre apenas o que precisa.
 
 ---
 
-# Operações
+# Pipeline
 
-## Workspace
+```
+Agent
+    ↓
+RETRIEVE
+    ↓
+Intent
+    ↓
+Compiler
+    ↓
+MigrationPlan
+    ↓
+Backend
+    ↓
+ISA
+    ↓
+RetrieveExecutor
+    ↓
+RetrieveProvider
+    ↓
+Artifact
+```
 
-retrieve(workspace)
+O pipeline é o mesmo para qualquer tipo de recuperação.
 
-Retorna informações do workspace atual.
-
----
-
-## Current File
-
-retrieve(current-file)
-
-Retorna o arquivo atual.
-
----
-
-## Related Files
-
-retrieve(related-files)
-
-Retorna arquivos semanticamente relacionados.
-
----
-
-## Symbol
-
-retrieve(symbol, NAME)
-
-Retorna contexto relacionado a um símbolo.
-
-Exemplo:
-
-retrieve(symbol, update_context)
+Apenas o `RetrieveProvider` muda.
 
 ---
 
-## Tree
+# Contrato
 
-retrieve(tree)
+Todo `RETRIEVE` retorna exatamente um `Artifact`.
 
-Retorna apenas a estrutura relevante do projeto.
+```python
+Artifact(
+    uri: str,
+    content: str,
+    metadata: dict,
+)
+```
+
+O Runtime nunca retorna:
+
+- strings
+- listas
+- dicts especiais
+- objetos diferentes
+
+Todo recurso recuperado é representado como um `Artifact`.
 
 ---
 
-## Knowledge
+# Resource Providers
 
-retrieve(knowledge)
+Cada tipo de recurso possui exatamente um Provider responsável.
 
-Retorna conhecimento persistente.
+Exemplos:
+
+- FileProvider
+- StatusProvider
+- AnalysisProvider
+- HandoverProvider
+- KnowledgeProvider
+- GitProvider
+- SymbolProvider
+
+Providers possuem responsabilidade única.
+
+Eles apenas resolvem recursos.
+
+Não interpretam protocolo.
+
+Não conversam com a IA.
+
+---
+
+# Resource Types
+
+## FILE
+
+Comando
+
+```text
+<<RETRIEVE FILE path>>
+```
+
+URI
+
+```text
+file://path
+```
+
+Origem
+
+- Filesystem
+
+Persistência
+
+- Sim
+
+Provider
+
+- FileProvider
+
+---
+
+## STATUS
+
+Comando
+
+```text
+<<RETRIEVE STATUS>>
+```
+
+URI
+
+```text
+status://current
+```
+
+Origem
+
+- Runtime
+- Snapshot
+- Registries
+
+Persistência
+
+- Não
+
+Provider
+
+- StatusProvider
+
+O conteúdo é derivado do estado atual do Runtime.
+
+---
+
+## ANALYSIS
+
+Comando
+
+```text
+<<RETRIEVE ANALYSIS>>
+```
+
+URI
+
+```text
+analysis://architecture
+```
+
+Origem
+
+- Artifact de análise
+
+Persistência
+
+- Sim
+
+Provider
+
+- AnalysisProvider
+
+Caso ainda não exista, retorna um Artifact vazio.
+
+---
+
+## HANDOVER
+
+Comando
+
+```text
+<<RETRIEVE HANDOVER>>
+```
+
+URI
+
+```text
+handover://current
+```
+
+Origem
+
+- STATUS
+- ANALYSIS
+- Overview do projeto
+
+Persistência
+
+- Não
+
+Provider
+
+- HandoverProvider
+
+O conteúdo é composto sob demanda.
+
+Nunca é armazenado.
+
+---
+
+## TREE
+
+Comando
+
+```text
+<<RETRIEVE TREE>>
+```
+
+URI
+
+```text
+tree://workspace
+```
+
+Origem
+
+- Filesystem
+
+Provider
+
+- TreeProvider
+
+---
+
+## SYMBOL
+
+Comando
+
+```text
+<<RETRIEVE SYMBOL update_context>>
+```
+
+URI
+
+```text
+symbol://update_context
+```
+
+Origem
+
+- Índice do projeto
+
+Provider
+
+- SymbolProvider
+
+---
+
+## KNOWLEDGE
+
+Comando
+
+```text
+<<RETRIEVE KNOWLEDGE>>
+```
+
+Origem
+
+Artefatos persistentes do projeto.
 
 Exemplos:
 
 - AGENTS.md
-- CONTEXT_SPEC.md
 - README.md
+- SPECs
+- documentação
+
+Provider
+
+- KnowledgeProvider
 
 ---
 
-## Git
+## GIT
 
-retrieve(git-diff)
+Comandos
 
-retrieve(git-status)
+```text
+<<RETRIEVE GIT STATUS>>
 
-retrieve(commits)
+<<RETRIEVE GIT DIFF>>
 
----
+<<RETRIEVE GIT COMMITS>>
+```
 
-## Logs
+Provider
 
-retrieve(log)
-
-retrieve(history)
-
-retrieve(diagnostics)
+- GitProvider
 
 ---
 
-# Builders
+## LOGS
 
-O Retriever nunca produz contexto diretamente.
+Comandos
 
-Toda recuperação deve ser delegada a um Builder.
+```text
+<<RETRIEVE LOG>>
 
-Exemplos:
+<<RETRIEVE HISTORY>>
 
-Builder(current-file)
+<<RETRIEVE DIAGNOSTICS>>
+```
 
-Builder(related-files)
+Provider
 
-Builder(project-knowledge)
-
-Builder(source)
+- LogProvider
 
 ---
 
-# Processors
+# Princípios
 
-Processors enriquecem Builders.
-
-Exemplos futuros:
-
-- langextract
-- git
-- tree
-- ripgrep
-- cache
+- O agente controla a exploração.
+- O Retriever nunca infere recursos adicionais.
+- O Runtime não possui caminhos especiais.
+- Cada Provider resolve apenas seu recurso.
+- Inteligência pertence ao agente.
+- Execução pertence ao Runtime.
+- Todo resultado é um Artifact.
 
 ---
 
@@ -177,162 +367,66 @@ O Retriever nunca:
 - interpreta respostas;
 - modifica arquivos;
 - aplica patches;
-- toma decisões arquiteturais.
+- toma decisões arquiteturais;
+- gera código.
 
-Seu papel é apenas localizar o contexto correto.
-
----
-
-# Futuro
-
-O Retriever poderá ser utilizado por qualquer agente através de um protocolo comum.
-
-Exemplo conceitual:
-
-retrieve(current-file)
-
-retrieve(symbol, update_context)
-
-retrieve(git-diff)
-
-retrieve(knowledge)
-
-A implementação do protocolo é independente do modelo de IA utilizado.
+Seu papel é apenas recuperar recursos.
 
 ---
 
-# Objetivo Final
+# Evolução
 
-Permitir que agentes naveguem autonomamente por projetos utilizando operações pequenas, previsíveis e reproduzíveis.
+Novos recursos são adicionados registrando novos Providers.
+
+Exemplos futuros:
+
+- workspace://
+- decision://
+- metrics://
+- history://
+- snapshot://
+- protocol://
+
+Nenhuma alteração no Runtime ou no pipeline principal deve ser necessária.
+
+---
+
+# Milestones
+
+## Milestone 1
+
+Validar recuperação incremental de arquivos.
+
+Implementado:
+
+- FILE
+
+---
+
+## Milestone 2
+
+Validar recuperação incremental de conhecimento.
+
+Implementar:
+
+- STATUS
+- ANALYSIS
+- HANDOVER
+
+Critério de sucesso:
+
+Um agente consegue compreender o estado do projeto solicitando apenas os recursos necessários.
+
+---
+
+# Filosofia
 
 O contexto deixa de ser enviado.
 
 O contexto passa a ser descoberto.
 
----
+O Retriever não sabe o que é importante.
 
-# Milestone 2
+Ele apenas resolve recursos.
 
-Objetivo
-
-Validar a recuperação incremental de contexto.
-
-Hipótese
-
-Um agente consegue concluir uma tarefa solicitando apenas o contexto necessário.
-
-Escopo
-
-Implementar apenas:
-
-retrieve(current-file)
-
-Fluxo esperado
-
-Usuário
-
-↓
-
-Tarefa
-
-↓
-
-Agente
-
-↓
-
-retrieve(current-file)
-
-↓
-
-Retriever
-
-↓
-
-Builder(current-file)
-
-↓
-
-Conteúdo do arquivo
-
-↓
-
-Agente
-
-↓
-
-Resposta
-
-Critério de sucesso
-
-- O usuário informa apenas a tarefa.
-- Nenhum arquivo é enviado inicialmente.
-- O agente solicita retrieve(current-file).
-- O Retriever fornece o arquivo.
-- O agente continua a tarefa normalmente.
-
-Não objetivos
-
-- related-files
-- symbol
-- knowledge
-- Patch Engine
-- LangExtract
-
-Esses componentes serão implementados apenas após a validação deste ciclo.
-
----
-
-## Protocolo de Recuperação
-
-O Retriever é dirigido pelo agente.
-
-O agente decide explicitamente qual contexto deseja recuperar.
-
-O Context Engine nunca infere arquivos adicionais.
-
-Exemplos:
-
-<<RETRIEVE FILE AGENTS.md>>
-
-<<RETRIEVE FILE bin/update_context.sh>>
-
-<<RETRIEVE FILES
-AGENTS.md
-CONTEXT_SPEC.md
-RETRIEVER_SPEC.md
->>
-
-Fluxo
-
-Agente
-    │
-    ▼
-Solicitação RETRIEVE
-    │
-    ▼
-Monitor
-    │
-    ▼
-retrieve
-    │
-    ▼
-context-builder
-    │
-    ▼
-Conteúdo solicitado
-    │
-    ▼
-Monitor
-    │
-    ▼
-Agente
-
-Princípios
-
-- O agente controla a exploração do contexto.
-- O Context Engine não toma decisões pelo agente.
-- O protocolo deve ser determinístico e auditável.
-- Builders executam apenas a recuperação solicitada.
-- Inteligência pertence ao agente; execução pertence ao Context Engine.
-
+A inteligência permanece no agente.

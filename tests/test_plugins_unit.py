@@ -64,7 +64,7 @@ class TestBootstrapPlugin:
         compiler = ProtocolCompiler()
         operations = compiler.compile(intent)
 
-        assert intent.kind == IntentKind.QUERY_STATE
+        assert intent.kind == IntentKind.BOOTSTRAP_GENESIS
         # Em tests/test_plugins_unit.py:
         assert intent.target == "bootstrap_plugin"  # Era "bootstrap_repository"
 

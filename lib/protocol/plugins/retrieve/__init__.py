@@ -1,9 +1,11 @@
 from dataclasses import dataclass
 from enum import Enum, auto
 from typing import List
+
 from protocol.base import ProtocolPlugin
 from protocol.ir import Intent, IntentKind
 from protocol.isa import Operation
+
 
 class ResourceType(Enum):
     FILE = auto()
@@ -11,11 +13,15 @@ class ResourceType(Enum):
     SEARCH = auto()
     DIFF = auto()
     STATUS = auto()
+    ANALYSIS = auto()
+    HANDOVER = auto()
+
 
 @dataclass(frozen=True)
 class RetrieveAST:
     resource_type: ResourceType
     targets: List[str]
+
 
 class RetrievePlugin(ProtocolPlugin):
     @property
@@ -35,28 +41,48 @@ class RetrievePlugin(ProtocolPlugin):
 
         if head == "FILE":
             return RetrieveAST(ResourceType.FILE, args if args else ["README.md"])
-        elif head == "TREE":
+
+        if head == "TREE":
             return RetrieveAST(ResourceType.TREE, args if args else ["."])
-        elif head == "SEARCH":
+
+        if head == "SEARCH":
             return RetrieveAST(ResourceType.SEARCH, [" ".join(args)])
-        elif head == "DIFF":
+
+        if head == "DIFF":
             return RetrieveAST(ResourceType.DIFF, args if args else ["."])
-        elif head == "STATUS":
-            return RetrieveAST(ResourceType.STATUS, ["."])
-        else:
-            files = [t if t.endswith(".md") else f"{t}.md" for t in clean]
-            return RetrieveAST(ResourceType.FILE, files)
+
+        if head == "STATUS":
+            return RetrieveAST(ResourceType.STATUS, ["status://current"])
+
+        if head == "ANALYSIS":
+            return RetrieveAST(ResourceType.ANALYSIS, ["analysis://architecture"])
+
+        if head == "HANDOVER":
+            return RetrieveAST(ResourceType.HANDOVER, ["handover://current"])
+
+        files = [t if t.endswith(".md") else f"{t}.md" for t in clean]
+        return RetrieveAST(ResourceType.FILE, files)
 
     def lower_to_intent(self, ast_node: RetrieveAST) -> Intent:
-        kind = IntentKind.SEARCH if ast_node.resource_type == ResourceType.SEARCH else IntentKind.READ_RESOURCE
+        if ast_node.resource_type == ResourceType.SEARCH:
+            kind = IntentKind.SEARCH
+        elif ast_node.resource_type == ResourceType.STATUS:
+            kind = IntentKind.QUERY_STATE
+        else:
+            kind = IntentKind.READ_RESOURCE
+
         return Intent(
             kind=kind,
             target=" ".join(ast_node.targets),
             metadata={
+                "resource_type": ast_node.resource_type.name,
+                "targets": ast_node.targets,
                 "sub_type": ast_node.resource_type.name,
-                "targets_list": ast_node.targets
-            }
+                "targets_list": ast_node.targets,
+            },
         )
 
     def lower_to_operations(self, intent: Intent) -> List[Operation]:
-        raise NotImplementedError("Operation generation moved to ProtocolCompiler.")
+        raise NotImplementedError(
+            "Operation generation moved to ProtocolCompiler."
+        )

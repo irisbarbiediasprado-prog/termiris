@@ -42,7 +42,7 @@ class ReadResourceCompiler(IntentCompiler):
         )
 
 
-class QueryStateCompiler(IntentCompiler):
+class GenesisCompiler(IntentCompiler):
     def compile(self, intent: Intent) -> MigrationPlan:
         source_file = intent.metadata["source_file"]
         return MigrationPlan(
@@ -55,6 +55,23 @@ class QueryStateCompiler(IntentCompiler):
             ]
         )
 
+
+
+
+class QueryStateCompiler(IntentCompiler):
+    def compile(self, intent: Intent) -> MigrationPlan:
+        return MigrationPlan(
+            steps=[
+                MigrationStep(
+                    action="RETRIEVE",
+                    target="status://current",
+                    parameters={
+                        "provider": "STATUS",
+                        "target": "status://current",
+                    },
+                )
+            ]
+        )
 
 class SearchCompiler(IntentCompiler):
     def compile(self, intent: Intent) -> MigrationPlan:
@@ -94,6 +111,7 @@ class ProtocolCompiler:
         self.backend = backend or backend_registry.resolve("default")
 
         self.registry.register(IntentKind.READ_RESOURCE, ReadResourceCompiler())
+        self.registry.register(IntentKind.BOOTSTRAP_GENESIS, GenesisCompiler())
         self.registry.register(IntentKind.QUERY_STATE, QueryStateCompiler())
         self.registry.register(IntentKind.SEARCH, SearchCompiler())
 

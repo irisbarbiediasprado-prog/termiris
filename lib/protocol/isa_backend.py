@@ -9,7 +9,7 @@ class ISABackend(Backend):
     Zero IO aqui - IO fica no RuntimeEngine.
     """
 
-    SUPPORTED = {"LIST_DIRECTORY", "INJECT_RESOURCE", "BOOTSTRAP_GENESIS", "SEARCH"}
+    SUPPORTED = {"LIST_DIRECTORY", "INJECT_RESOURCE", "BOOTSTRAP_GENESIS", "SEARCH", "RETRIEVE", "RETRIEVE_RESOURCE"}
 
     def validate(self, plan: MigrationPlan) -> None:
         for step in plan.steps:
@@ -62,4 +62,16 @@ class ISABackend(Backend):
                         },
                     )
                 )
+
+            elif step.action in ("RETRIEVE", "RETRIEVE_RESOURCE"):
+                operations.append(
+                    Operation(
+                        instruction=PrimitiveISA.RETRIEVE,
+                        payload={
+                            "provider": step.parameters.get("provider", "FILE"),
+                            "target": step.parameters.get("target", step.target),
+                        },
+                    )
+                )
+
         return operations

@@ -23,7 +23,7 @@ class BootstrapPlugin(ProtocolPlugin):
 
     def lower_to_intent(self, ast_node: BootstrapAST) -> Intent:
         return Intent(
-            kind=IntentKind.QUERY_STATE,
+            kind=IntentKind.BOOTSTRAP_GENESIS,
             target="bootstrap_plugin",
             metadata={"source_file": str(self.target_file)}
         )
