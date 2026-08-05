@@ -28,6 +28,34 @@ class ReadResourceCompiler(IntentCompiler):
                 ]
             )
 
+        if subtype == "FILE":
+            return MigrationPlan(
+                steps=[
+                    MigrationStep(
+                        action="INJECT_RESOURCE",
+                        target=targets[0] if targets else "",
+                        parameters={
+                            "resource_type": subtype,
+                            "targets": targets,
+                        },
+                    )
+                ]
+            )
+
+        if subtype in ("STATUS", "ANALYSIS", "HANDOVER") and subtype != "FILE":
+            return MigrationPlan(
+                steps=[
+                    MigrationStep(
+                        action="RETRIEVE",
+                        target=targets[0],
+                        parameters={
+                            "resource_type": subtype,
+                            "target": targets[0],
+                        },
+                    )
+                ]
+            )
+
         return MigrationPlan(
             steps=[
                 MigrationStep(
