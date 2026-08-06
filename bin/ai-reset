@@ -1,49 +1,71 @@
 #!/data/data/com.termux/files/usr/bin/bash
-set -euo pipefail
+set -uo pipefail
+# sem -e de propósito: não aborta no meio
 
 SESSION="ia_chat"
 STATE_DIR="$HOME/.termiris/runtime/cache/state"
+TARGET="ia_chat:Chat"
 
-# 1. Garante que os diretórios físicos essenciais SEMPRE existem
-mkdir -p "$STATE_DIR"
+echo "== ai-reset start =="
 
-# 2. Limpa daemons e sockets antigos
-pkill -f "event-parser" 2>/dev/null || true
-pkill -f "mitl" 2>/dev/null || true
-rm -f "$HOME/.termiris/runtime/parser.sock"
-rm -f "$HOME/.termiris/runtime/event-parser.log"
-
-# 3. Mata a sessão do tmux de forma segura
-tmux kill-session -t "$SESSION" 2>/dev/null || true
-
-# 4. Reseta o snapshot em memória/disco
-rm -f "$STATE_DIR"/*
-
-# 5. RE-BOOTSTRAP ATÔMICO VIA PROTOCOL RUNTIME
-echo "<< BOOTSTRAP >>" | "$HOME/.termiris/bin/ai-protocol" 2>/dev/null || true
-
-# 6. Reconstrói a sessão do tmux do zero
-tmux new-session -d -s "$SESSION" -n Chat \
-'sh -c "$HOME/.termiris/bin/termiris-chat termiris_ctx 2>&1 | tee -a $HOME/.termiris/runtime/mitl.stdout.log; rc=\${PIPESTATUS:-\$?}; echo; echo \"=== MITL FINALIZOU (exit=\$rc) ===\"; read -r -p \"ENTER para fechar...\" _"'
-
-# Aguarda Chat estabilizar
-for i in {1..10}; do
-    tmux list-panes -t "$SESSION:Chat" >/dev/null 2>&1 && break
-    sleep 1
-done
-tmux new-window -t "$SESSION" -n Project \
-    "$HOME/.termiris/bin/context-delivery"
-
-tmux new-window -t "$SESSION" -n Context -c "$HOME/.termiris" \
-    "watch -n 1 'cat runtime/cache/state/snapshot.ctx 2>/dev/null || echo Sem Contexto Ativo'"
-
-tmux select-window -t "$SESSION:Chat"
-
-# 7. Anexa ou alterna de forma segura
-if [ -z "${TMUX:-}" ]; then
-    tmux attach-session -t "$SESSION"
-else
-    tmux switch-client -t "$SESSION"
+# sair de ia_chat se estiver dentro
+if [ -n "${TMUX:-}" ]; then
+  cur="$(tmux display-message -p '#S' 2>/dev/null || true)"
+  if [ "$cur" = "$SESSION" ]; then
+    tmux has-session -t main 2>/dev/null || tmux new-session -d -s main
+    tmux switch-client -t main 2>/dev/null || true
+    sleep 0.3
+  fi
 fi
 
-echo "🟢 Termiris resetado com sucesso para Gen 1 via ProtocolRuntime"
+pkill -f "event-parser" 2>/dev/null || true
+pkill -f "mitl" 2>/dev/null || true
+pkill -f "context-delivery" 2>/dev/null || true
+pkill -f "termiris-chat" 2>/dev/null || true
+pkill -f "aichat" 2>/dev/null || true
+
+tmux kill-session -t "$SESSION" 2>/dev/null || true
+sleep 0.3
+
+mkdir -p "$STATE_DIR"
+# limpa tudo dentro, inclusive diretórios
+find "$STATE_DIR" -mindepth 1 -maxdepth 1 -exec rm -rf {} + 2>/dev/null || true
+
+echo "== creating Chat =="
+tmux new-session -d -s "$SESSION" -n Chat \
+  "bash $HOME/.termiris/bin/termiris-chat termiris_ctx; echo EXIT=\$?; sleep infinity"
+
+sleep 1
+
+if ! tmux has-session -t "$SESSION" 2>/dev/null; then
+  echo "FAIL: session not created"
+  exit 1
+fi
+echo "OK: session exists"
+
+echo "== waiting prompt =="
+ready=0
+for i in $(seq 1 40); do
+  if tmux capture-pane -pt "$TARGET" 2>/dev/null | grep -q "termiris_ctx)"; then
+    echo "OK: prompt ready"
+    ready=1
+    break
+  fi
+  sleep 0.25
+done
+[ "$ready" = 1 ] || echo "WARN: prompt timeout"
+
+echo "== bootstrap =="
+echo "<< BOOTSTRAP >>" | "$HOME/.termiris/bin/ai-protocol" 2>/dev/null || echo "WARN: bootstrap failed"
+
+echo "== aux windows =="
+tmux new-window -t "$SESSION" -n Project "$HOME/.termiris/bin/context-delivery" 2>/dev/null || true
+tmux new-window -t "$SESSION" -n Context -c "$HOME/.termiris" \
+  "watch -n 1 'cat runtime/cache/state/snapshot.ctx 2>/dev/null || echo Sem Contexto'" 2>/dev/null || true
+
+tmux select-window -t "$SESSION:Chat" 2>/dev/null || true
+
+echo "== done =="
+tmux list-sessions
+tmux list-windows -t "$SESSION"
+echo "Entre com: tmux switch-client -t ia_chat"

@@ -116,6 +116,7 @@ class RetrieveExecutor(Executor):
         self.state = state if state is not None else {}
 
     def execute(self, op: Operation) -> RuntimeResult:
+        Path.home().joinpath(".termiris/runtime/retrieve.trace").write_text(repr(op.payload)+"\n", encoding="utf-8")
         provider = op.payload.get("resource_type", "FILE").upper()
         target = op.payload.get("target", "")
 

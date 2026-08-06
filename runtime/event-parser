@@ -1,92 +1,102 @@
-#!/data/data/com.termux/files/usr/bin/bash
-set -euo pipefail
+#!/usr/bin/env python3
+import socket
+import re
+import sys
+from pathlib import Path
+from time import time
+from uuid import uuid4
 
-while IFS= read -r LINE; do
+LIB_DIR = Path.home() / ".termiris" / "lib"
+if str(LIB_DIR) not in sys.path:
+    sys.path.insert(0, str(LIB_DIR))
 
-    case "$LINE" in
+from protocol.dispatcher import ProtocolRuntime
+from events import JsonlEventSink
 
-        '<<RETRIEVE '*)
+SOCKET_PATH = Path.home() / ".termiris" / "runtime" / "parser.sock"
+LOG_FILE = Path.home() / ".termiris" / "runtime" / "event-parser.log"
 
-            CMD="${LINE#<<RETRIEVE }"
-            CMD="${CMD%%>>}"
+ANSI_ESCAPE = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
 
-            VERB="${CMD%% *}"
-            ARG="${CMD#"$VERB"}"
-            ARG="${ARG# }"
+runtime = ProtocolRuntime()
+sink = JsonlEventSink()
 
-            cat <<EVENT
-type=RETRIEVE
-verb=$VERB
-arg=$ARG
-EVENT
-            ;;
+def log(msg):
+    with open(LOG_FILE, "a", encoding="utf-8") as f:
+        f.write(msg + "\n")
 
-        BOOTSTRAP_COMPLETE)
+def clean(text):
+    return ANSI_ESCAPE.sub("", text)
 
-            cat <<EVENT
-type=BOOTSTRAP
-step=BOOTSTRAP
-status=COMPLETE
-EVENT
-            ;;
+def publish_tag(tag):
+    sink.publish({
+        "version": 1,
+        "event_id": str(uuid4()),
+        "trace_id": "unknown",
+        "timestamp": int(time() * 1000),
+        "source": "protocol",
+        "type": "tag.detected",
+        "payload": {
+            "raw_text": tag
+        }
+    })
 
-        SPEC_PROTOCOL_COMPLETE)
+def handle(tag):
+    publish_tag(tag)
+    log(f"[Tag detectada]: {tag}")
 
-            cat <<EVENT
-type=BOOTSTRAP
-step=SPEC_PROTOCOL
-status=COMPLETE
-EVENT
-            ;;
+    try:
+        result = runtime.handle(tag)
+        if hasattr(result, 'operations'):
+            log(f"[ProtocolRuntime]: {len(result.operations)} operacoes, metadata={result.metadata}")
+        else:
+            log(f"[ProtocolRuntime]: {len(result)} operacoes (legado)")
+    except Exception as e:
+        log(f"[Erro no ProtocolRuntime]: {e}")
 
-        EVENTS_COMPLETE)
+def main():
+    if not SOCKET_PATH.exists():
+        log(f"Socket {SOCKET_PATH} nao encontrado.")
+        sys.exit(1)
 
-            cat <<EVENT
-type=BOOTSTRAP
-step=EVENTS
-status=COMPLETE
-EVENT
-            ;;
+    log(f"Conectando ao socket {SOCKET_PATH}...")
 
-        TEST_POLICY_COMPLETE)
+    client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    client.connect(str(SOCKET_PATH))
 
-            cat <<EVENT
-type=BOOTSTRAP
-step=TEST_POLICY
-status=COMPLETE
-EVENT
-            ;;
+    buffer = ""
 
-        TP_CONFORMANCE_COMPLETE)
+    try:
+        while True:
+            data = client.recv(4096)
+            if not data:
+                break
 
-            cat <<EVENT
-type=BOOTSTRAP
-step=TP_CONFORMANCE
-status=COMPLETE
-EVENT
-            ;;
+            buffer += clean(data.decode("utf-8", errors="ignore"))
 
-        TP_CURRICULUM_COMPLETE)
+            while True:
+                start = buffer.find("<<")
+                if start < 0:
+                    buffer = buffer[-1:] if buffer.endswith("<") else ""
+                    break
 
-            cat <<EVENT
-type=BOOTSTRAP
-step=TP_CURRICULUM
-status=COMPLETE
-EVENT
-            ;;
+                end = buffer.find(">>", start + 2)
+                if end < 0:
+                    buffer = buffer[start:]
+                    break
 
-        *)
+                tag = buffer[start:end + 2]
+                buffer = buffer[end + 2:]
 
-            [ -n "$LINE" ] || continue
+                handle(tag)
 
-            cat <<EVENT
-type=TEXT
-content=$LINE
-EVENT
-            ;;
+    except KeyboardInterrupt:
+        pass
+    except Exception as e:
+        log(f"Erro: {e}")
+    finally:
+        sink.close()
+        client.close()
 
-    esac
-
-    echo
-
-done
+if __name__ == "__main__":
+    main()

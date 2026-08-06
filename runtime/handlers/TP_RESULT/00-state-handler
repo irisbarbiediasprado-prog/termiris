@@ -8,12 +8,14 @@ EVENT="$1"
 TYPE=
 STATUS=
 CONTEXT=
+HASH=
 
 while IFS='=' read -r K V; do
     case "$K" in
         type) TYPE="$V" ;;
         status) STATUS="$V" ;;
         context) CONTEXT="$V" ;;
+        hash) HASH="$V" ;;
     esac
 done < "$EVENT"
 
@@ -29,5 +31,6 @@ cp "$CONTEXT" "$SESSION/context.ctx"
 cat > "$SESSION/state" <<EOT
 status=$STATUS
 context=$SESSION/context.ctx
+hash=$HASH
 updated=$(date -Iseconds)
 EOT

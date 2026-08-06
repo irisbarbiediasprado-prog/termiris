@@ -20,7 +20,7 @@ if ! tmux has-session -t "$SESSION" 2>/dev/null; then
     tmux new-session -d -s "$SESSION" -n Chat \
 'sh -c "$HOME/.termiris/bin/termiris-chat termiris_ctx 2>&1 | tee -a $HOME/.termiris/runtime/mitl.stdout.log; rc=\${PIPESTATUS:-\$?}; echo; echo \"=== MITL FINALIZOU (exit=\$rc) ===\"; read -r -p \"ENTER para fechar...\" _"' 
     tmux new-window -t "$SESSION" -n Project \
-        "$HOME/.termiris/bin/project-monitor"
+        "$HOME/.termiris/bin/context-delivery"
 
     tmux new-window -t "$SESSION" -n Context -c "$HOME/.termiris" \
         "watch -n 1 'cat runtime/cache/state/snapshot.ctx 2>/dev/null || echo Sem Contexto Ativo'"

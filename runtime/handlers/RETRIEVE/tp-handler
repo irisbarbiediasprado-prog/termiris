@@ -32,8 +32,4 @@ echo "expected=$EXPECTED"
 echo "observed=$OBSERVED"
 } > "$RESULT"
 
-cat <<EOT
-type=TP_RESULT
-status=$STATUS
-event=$ID
-EOT
+# NÃO emite TP_RESULT

@@ -6,16 +6,17 @@ SESSION="$ROOT/cache/sessions/current"
 
 PROJECT_ROOT="$(grep '^project_root=' "$SESSION" 2>/dev/null | cut -d= -f2- || printf '%s\n' "$HOME/.termiris")"
 
-printf 'type=TP_RESULT\n'
-printf 'status=PASS\n'
-printf 'payload=BEGIN TREE\n\n'
+OUT="$ROOT/cache/tree.txt"
+mkdir -p "$(dirname "$OUT")"
 
-find "$PROJECT_ROOT" \
-    -path '*/.git' -prune -o \
-    -path '*/node_modules' -prune -o \
-    -path '*/.sandbox' -prune -o \
-    -print \
-| sed "s|^$PROJECT_ROOT/||" \
-| sort
+{
+    find "$PROJECT_ROOT" \
+        -path '*/.git' -prune -o \
+        -path '*/node_modules' -prune -o \
+        -path '*/.sandbox' -prune -o \
+        -print \
+    | sed "s|^$PROJECT_ROOT/||" \
+    | sort
+} > "$OUT"
 
-printf '\nEND TREE\n'
+echo "📂 Árvore salva em $OUT"
