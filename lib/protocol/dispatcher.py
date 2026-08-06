@@ -1,11 +1,13 @@
-from typing import List, Dict, Any, Optional
+from typing import List
 from dataclasses import replace
 from protocol.isa import Operation
 from protocol.kernel import CommandRouter, ProtocolKernel
 from cli.metadata import extract_metadata
 
+_ENGINE_DEFAULT = object()
+
 class ProtocolDispatcher:
-    def __init__(self, kernel=None, engine=None, router=None):
+    def __init__(self, kernel=None, engine=_ENGINE_DEFAULT, router=None):
         if kernel is None:
             router = router or CommandRouter()
             if not router._routes:
@@ -13,7 +15,7 @@ class ProtocolDispatcher:
             kernel = ProtocolKernel(router)
         self.kernel = kernel
 
-        if engine is None:
+        if engine is _ENGINE_DEFAULT:
             try:
                 from runtime.engine import RuntimeEngine
                 self.engine = RuntimeEngine()
