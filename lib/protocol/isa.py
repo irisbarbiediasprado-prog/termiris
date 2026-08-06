@@ -20,3 +20,4 @@ class PrimitiveISA(Enum):
 class Operation:
     instruction: PrimitiveISA
     payload: Dict[str, Any] = field(default_factory=dict)
+    metadata: Dict[str, Any] = field(default_factory=dict)

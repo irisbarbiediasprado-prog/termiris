@@ -1,16 +1,7 @@
-#!/usr/bin/env python3
 import shlex
 from typing import Tuple, Dict, List
 
 def extract_metadata(raw: str) -> Tuple[str, Dict[str, str]]:
-    """
-    Extrai pares --chave=valor de uma string de comando, preservando argumentos posicionais.
-    Retorna: (comando_limpo, dicionario_metadata)
-    
-    Exemplo:
-        extract_metadata(".file snapshot.ctx --hash=abc123 --origin=delivery")
-        -> (".file snapshot.ctx", {"hash": "abc123", "origin": "delivery"})
-    """
     try:
         tokens = shlex.split(raw)
     except ValueError:

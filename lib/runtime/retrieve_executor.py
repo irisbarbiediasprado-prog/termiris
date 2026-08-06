@@ -117,6 +117,9 @@ class RetrieveExecutor(Executor):
 
     def execute(self, op: Operation) -> RuntimeResult:
         Path.home().joinpath(".termiris/runtime/retrieve.trace").write_text(repr(op.payload)+"\n", encoding="utf-8")
+
+        hash_val = op.metadata.get("hash") if op.metadata else None
+
         provider = op.payload.get("resource_type", "FILE").upper()
         target = op.payload.get("target", "")
 
@@ -127,6 +130,9 @@ class RetrieveExecutor(Executor):
             )
 
         artifact = _PROVIDERS[provider](target, self.state)
+
+        if hash_val:
+            artifact.metadata["hash"] = hash_val
 
         self.state["generation"] = self.state.get("generation", 0) + 1
 
