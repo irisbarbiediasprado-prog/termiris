@@ -19,3 +19,4 @@ __pycache__/
 *.o
 mitl/src/*.o
 runtime/events.jsonl
+runtime/retrieve.trace
