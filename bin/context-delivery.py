@@ -4,7 +4,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-# Adiciona lib ao path
 lib_path = Path.home() / ".termiris/lib"
 sys.path.insert(0, str(lib_path))
 
@@ -18,12 +17,10 @@ SESSION_STATE = Path.home() / ".termiris/runtime/cache/sessions/state"
 SESSION = "ia_chat"
 TARGET = "ia_chat:Chat*"
 
-MAX_RETRIES = 5
-BASE_BACKOFF = 2
-MAX_BACKOFF = 60
-
 policy = ContextPolicy(state_dir=STATE_DIR)
 
+def should_deliver(new_hash, last_success):
+    return new_hash is not None and new_hash != last_success
 def get_snapshot_hash():
     if not META.exists():
         return None
@@ -33,16 +30,16 @@ def get_snapshot_hash():
     return None
 
 def deliver(hash_val):
-    # Verifica política antes de enviar
+    # ContextPolicy decide se deve enviar ou não
     decision = policy.check(hash_val)
     print(f"[policy] {decision}")
     if decision["mode"] == "PG":
         print(f"⏳ Política: modo PG, aguardando {decision['delay']}s")
         time.sleep(decision["delay"])
-    # Envia via tmux
+    # Envia .file puro, SEM hash
     subprocess.run([
         "tmux", "send-keys", "-t", TARGET, "C-u",
-        f".file {SNAPSHOT} --hash={hash_val}", "Enter"
+        f".file {SNAPSHOT}", "Enter"
     ], check=True)
     print(f"🟢 .file enviado (hash={hash_val})")
 
@@ -67,8 +64,8 @@ def main():
         new_hash = get_snapshot_hash()
         if new_hash and new_hash != last_success:
             deliver(new_hash)
-            # Aguarda estado
-            for _ in range(120):  # timeout 120s
+            # Aguarda confirmação do estado
+            for _ in range(120):
                 state = read_session_state()
                 if state and state.get("hash") == new_hash:
                     status = state.get("status", "")
