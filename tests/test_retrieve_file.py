@@ -13,5 +13,6 @@ def test_retrieve_file_pipeline():
 
     op = operations[0]
 
-    assert op.instruction == PrimitiveISA.SNAPSHOT
-    assert op.payload["targets"] == ["README.md"]
+    assert op.instruction == PrimitiveISA.RETRIEVE
+    assert op.payload["resource_type"] == "FILE"
+    assert op.payload["target"] == "README.md"

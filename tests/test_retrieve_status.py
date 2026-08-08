@@ -14,5 +14,5 @@ def test_retrieve_status_pipeline():
     op = operations[0]
 
     assert op.instruction == PrimitiveISA.RETRIEVE
-    assert op.payload["provider"] == "STATUS"
+    assert op.payload["resource_type"] == "STATUS"
     assert op.payload["target"] == "status://current"

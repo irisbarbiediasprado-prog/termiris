@@ -20,3 +20,19 @@ __pycache__/
 mitl/src/*.o
 runtime/events.jsonl
 runtime/retrieve.trace
+
+# Runtime debug artifacts
+runtime/event-parser.bak
+runtime/event-parser.startup.log
+runtime/socket_tap.log
+runtime/handlers.disabled/
+runtime/parser.sock
+
+# Context ACK state (runtime data)
+runtime/cache/context/pending.hash
+runtime/cache/context/ack.hash
+runtime/cache/context/failure.hash
+runtime/cache/context/ack_meta.log
+
+# Test cache
+.pytest_cache/

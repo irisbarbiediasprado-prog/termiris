@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-import socket
+import argparse
 import re
+import socket
 import sys
+import time
 from pathlib import Path
-from time import time
 from uuid import uuid4
 
 LIB_DIR = Path.home() / ".termiris" / "lib"
@@ -12,6 +13,9 @@ if str(LIB_DIR) not in sys.path:
 
 from protocol.dispatcher import ProtocolRuntime
 from events import JsonlEventSink
+from events.tap import SocketTap
+from runtime.context_ack import ContextAckStore
+from runtime.ack_tracker import AckTracker
 
 SOCKET_PATH = Path.home() / ".termiris" / "runtime" / "parser.sock"
 LOG_FILE = Path.home() / ".termiris" / "runtime" / "event-parser.log"
@@ -20,20 +24,24 @@ ANSI_ESCAPE = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
 
 runtime = ProtocolRuntime()
 sink = JsonlEventSink()
+ack_store = ContextAckStore()
+
 
 def log(msg):
     with open(LOG_FILE, "a", encoding="utf-8") as f:
         f.write(msg + "\n")
 
+
 def clean(text):
     return ANSI_ESCAPE.sub("", text)
+
 
 def publish_tag(tag):
     sink.publish({
         "version": 1,
         "event_id": str(uuid4()),
         "trace_id": "unknown",
-        "timestamp": int(time() * 1000),
+        "timestamp": int(time.time() * 1000),
         "source": "protocol",
         "type": "tag.detected",
         "payload": {
@@ -41,62 +49,160 @@ def publish_tag(tag):
         }
     })
 
+
 def handle(tag):
     publish_tag(tag)
     log(f"[Tag detectada]: {tag}")
 
     try:
         result = runtime.handle(tag)
-        if hasattr(result, 'operations'):
-            log(f"[ProtocolRuntime]: {len(result.operations)} operacoes, metadata={result.metadata}")
+        if hasattr(result, "operations"):
+            log(
+                f"[ProtocolRuntime]: {len(result.operations)} "
+                f"operacoes, metadata={result.metadata}"
+            )
         else:
             log(f"[ProtocolRuntime]: {len(result)} operacoes (legado)")
     except Exception as e:
         log(f"[Erro no ProtocolRuntime]: {e}")
 
+
+def instrument_recv(seq, data, decoded, cleaned, before, after):
+    log(f"[RECV #{seq}] LEN={len(data)}")
+    log(f"[RECV #{seq}] RAW_HEX={data.hex()}")
+    log(f"[RECV #{seq}] DECODED={decoded!r}")
+    log(f"[RECV #{seq}] CLEANED={cleaned!r}")
+    log(f"[RECV #{seq}] BUFFER_BEFORE={before!r}")
+    log(f"[RECV #{seq}] BUFFER_AFTER={after!r}")
+
+
+def connect_to_socket(socket_path, retry_interval=2.0):
+    """Conecta ao socket com retry automático."""
+    while True:
+        log(f"[CONNECT] Aguardando socket {socket_path}...")
+        
+        while not socket_path.exists():
+            time.sleep(retry_interval)
+        
+        try:
+            client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            client.connect(str(socket_path))
+            log(f"[CONNECTED] parser.sock conectado")
+            return client
+        except (ConnectionRefusedError, FileNotFoundError, OSError) as e:
+            log(f"[CONNECT] Falha na conexão: {e}. Tentando novamente em {retry_interval}s...")
+            time.sleep(retry_interval)
+
+
 def main():
-    if not SOCKET_PATH.exists():
-        log(f"Socket {SOCKET_PATH} nao encontrado.")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description="Event Parser do Termiris")
+    parser.add_argument(
+        "--tap",
+        action="store_true",
+        help="Ativa modo de captura raw do socket",
+    )
+    args = parser.parse_args()
 
-    log(f"Conectando ao socket {SOCKET_PATH}...")
+    log(f"[BOOT] event-parser iniciado pid={Path('/proc/self').resolve().name}")
+    log(f"[BOOT] socket={SOCKET_PATH}")
 
-    client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    client.connect(str(SOCKET_PATH))
+    tap = SocketTap() if args.tap else None
 
-    buffer = ""
+    if tap:
+        log(f"🔍 Modo TAP ativado. Gravando em {tap.log_file}")
 
-    try:
-        while True:
-            data = client.recv(4096)
-            if not data:
+    # Loop principal com reconexão automática
+    while True:
+        try:
+            client = connect_to_socket(SOCKET_PATH)
+            
+            buffer = ""
+            recv_seq = 0
+            ack_tracker = AckTracker(ack_store)
+
+            try:
+                while True:
+                    data = client.recv(4096)
+
+                    if not data:
+                        log("[EOF] parser.sock encerrou o fluxo")
+                        break
+
+                    recv_seq += 1
+
+                    before = buffer
+
+                    decoded = data.decode("utf-8", errors="ignore")
+                    cleaned = clean(decoded)
+
+                    buffer += cleaned
+
+                    instrument_recv(
+                        recv_seq,
+                        data,
+                        decoded,
+                        cleaned,
+                        before,
+                        buffer,
+                    )
+
+                    if tap:
+                        tap.record(
+                            recv_seq,
+                            data,
+                            before[-200:],
+                            buffer[-200:],
+                            cleaned,
+                        )
+
+                    # Observa o fluxo para ACK (não interfere na extração de tags)
+                    ack_tracker.observe(cleaned)
+
+                    # Extração de tags (semântica existente preservada)
+                    while True:
+                        start = buffer.find("<<")
+
+                        if start < 0:
+                            buffer = buffer[-1:] if buffer.endswith("<") else ""
+                            break
+
+                        end = buffer.find(">>", start + 2)
+
+                        if end < 0:
+                            buffer = buffer[start:]
+                            break
+
+                        tag = buffer[start:end + 2]
+                        buffer = buffer[end + 2:]
+
+                        log(
+                            f"[TAG EXTRACTED] seq={recv_seq} "
+                            f"tag={tag!r} remaining_buffer={buffer!r}"
+                        )
+
+                        handle(tag)
+
+            except KeyboardInterrupt:
+                log("[STOP] KeyboardInterrupt")
                 break
+            except Exception as e:
+                log(f"[Erro] {type(e).__name__}: {e}")
+                # Continua o loop externo para reconectar
+            finally:
+                log("[CLOSE] fechando conexão atual")
+                client.close()
+                
+        except KeyboardInterrupt:
+            log("[STOP] KeyboardInterrupt no loop externo")
+            break
+        except Exception as e:
+            log(f"[Erro crítico] {type(e).__name__}: {e}")
+            time.sleep(2)
+            continue
+    
+    log("[CLOSE] encerrando event-parser")
+    sink.close()
 
-            buffer += clean(data.decode("utf-8", errors="ignore"))
-
-            while True:
-                start = buffer.find("<<")
-                if start < 0:
-                    buffer = buffer[-1:] if buffer.endswith("<") else ""
-                    break
-
-                end = buffer.find(">>", start + 2)
-                if end < 0:
-                    buffer = buffer[start:]
-                    break
-
-                tag = buffer[start:end + 2]
-                buffer = buffer[end + 2:]
-
-                handle(tag)
-
-    except KeyboardInterrupt:
-        pass
-    except Exception as e:
-        log(f"Erro: {e}")
-    finally:
-        sink.close()
-        client.close()
 
 if __name__ == "__main__":
     main()

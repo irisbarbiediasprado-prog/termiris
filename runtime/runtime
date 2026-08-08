@@ -21,7 +21,7 @@ exec 3<&0
 BUS_PID=$!
 trace "bus pid=$BUS_PID"
 
-"$ROOT/event-parser" <&3 >"$BUS" &
+"$ROOT/event-parser" --tap <&3 >"$BUS" &
 PARSER_PID=$!
 trace "parser pid=$PARSER_PID"
 

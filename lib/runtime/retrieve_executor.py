@@ -79,6 +79,9 @@ def _file(target, state):
     path = Path(target)
 
     if not path.exists():
+        path = Path.home() / ".termiris" / target
+
+    if not path.exists():
         return Artifact(
             uri=f"file://{target}",
             content="",

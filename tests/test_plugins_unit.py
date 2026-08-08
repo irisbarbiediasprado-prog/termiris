@@ -40,12 +40,9 @@ class TestRetrievePlugin:
         operations = compiler.compile(intent)
 
         assert len(operations) == 1
-        assert operations[0].instruction == PrimitiveISA.SNAPSHOT
-        assert operations[0].payload == {
-            "action": "INJECT_RESOURCE",
-            "resource_type": "FILE",
-            "targets": ["script.py"]
-        }
+        assert operations[0].instruction == PrimitiveISA.RETRIEVE
+        assert operations[0].payload["resource_type"] == "FILE"
+        assert operations[0].payload["target"] == "script.py"
 
 
 class TestBootstrapPlugin:

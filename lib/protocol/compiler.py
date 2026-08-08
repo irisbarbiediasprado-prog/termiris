@@ -32,11 +32,11 @@ class ReadResourceCompiler(IntentCompiler):
             return MigrationPlan(
                 steps=[
                     MigrationStep(
-                        action="INJECT_RESOURCE",
+                        action="RETRIEVE",
                         target=targets[0] if targets else "",
                         parameters={
-                            "resource_type": subtype,
-                            "targets": targets,
+                            "provider": "FILE",
+                            "target": targets[0] if targets else "",
                         },
                     )
                 ]

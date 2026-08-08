@@ -4,8 +4,4 @@ set -euo pipefail
 SESSION="${1:-termiris_ctx}"
 mkdir -p "$HOME/.termiris/runtime"
 
-if ! pgrep -f "event-parser" > /dev/null; then
-    ("$HOME/.termiris/bin/event-parser" >/dev/null 2>&1) &
-fi
-
 exec "$HOME/.termiris/bin/mitl" aichat -s "$SESSION"

@@ -2,10 +2,11 @@
 set -euo pipefail
 
 SESSION="ia_chat"
+RUNTIME="$HOME/.termiris/runtime/event-parser"
 
 CURRENT_SESSION="$(tmux display-message -p '#S' 2>/dev/null || true)"
 
-# TOGGLE: Se estiver na ia_chat, muda para main (criando a main se não existir)
+# TOGGLE: Se estiver na ia_chat, muda para main
 if [ "$CURRENT_SESSION" = "$SESSION" ]; then
     if ! tmux has-session -t main 2>/dev/null; then
         tmux new-session -d -s main
@@ -16,9 +17,28 @@ fi
 
 # INICIALIZAÇÃO da sessão ia_chat
 if ! tmux has-session -t "$SESSION" 2>/dev/null; then
+    # Inicia o runtime (event-parser) se não estiver rodando
+    if ! pgrep -f "runtime/event-parser" >/dev/null; then
+        echo "🚀 Iniciando runtime..."
+        "$RUNTIME" >/dev/null 2>&1 &
+        # Aguarda até 4 segundos para o parser subir
+        for i in $(seq 1 20); do
+            if pgrep -f "runtime/event-parser" >/dev/null; then
+                echo "✅ Runtime pronto"
+                break
+            fi
+            sleep 0.2
+        done
+        if ! pgrep -f "runtime/event-parser" >/dev/null; then
+            echo "⚠️ Runtime não respondeu após 4 segundos"
+        fi
+    fi
+
     echo "<< BOOTSTRAP >>" | "$HOME/.termiris/bin/ai-protocol" 2>/dev/null || true
+
     tmux new-session -d -s "$SESSION" -n Chat \
-'sh -c "$HOME/.termiris/bin/termiris-chat termiris_ctx 2>&1 | tee -a $HOME/.termiris/runtime/mitl.stdout.log; rc=\${PIPESTATUS:-\$?}; echo; echo \"=== MITL FINALIZOU (exit=\$rc) ===\"; read -r -p \"ENTER para fechar...\" _"' 
+'sh -c "$HOME/.termiris/bin/termiris-chat termiris_ctx 2>&1 | tee -a $HOME/.termiris/runtime/mitl.stdout.log; rc=\${PIPESTATUS:-\$?}; echo; echo \"=== MITL FINALIZOU (exit=\$rc) ===\"; read -r -p \"ENTER para fechar...\" _"'
+
     tmux new-window -t "$SESSION" -n Project \
         "$HOME/.termiris/bin/context-delivery"
 

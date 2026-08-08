@@ -8,6 +8,7 @@ lib_path = Path.home() / ".termiris/lib"
 sys.path.insert(0, str(lib_path))
 
 from termiris.context_policy import ContextPolicy
+from runtime.context_ack import ContextAckStore
 
 STATE_DIR = Path.home() / ".termiris/runtime/cache/state"
 SNAPSHOT = STATE_DIR / "snapshot.ctx"
@@ -18,9 +19,13 @@ SESSION = "ia_chat"
 TARGET = "ia_chat:Chat*"
 
 policy = ContextPolicy(state_dir=STATE_DIR)
+ack_store = ContextAckStore()
+
 
 def should_deliver(new_hash, last_success):
     return new_hash is not None and new_hash != last_success
+
+
 def get_snapshot_hash():
     if not META.exists():
         return None
@@ -29,6 +34,7 @@ def get_snapshot_hash():
             return line.split("=", 1)[1].strip()
     return None
 
+
 def deliver(hash_val):
     # ContextPolicy decide se deve enviar ou não
     decision = policy.check(hash_val)
@@ -36,12 +42,18 @@ def deliver(hash_val):
     if decision["mode"] == "PG":
         print(f"⏳ Política: modo PG, aguardando {decision['delay']}s")
         time.sleep(decision["delay"])
+
+    # Marca como pendente ANTES de enviar
+    ack_store.mark_pending(hash_val)
+    print(f"📤 mark_pending({hash_val})")
+
     # Envia .file puro, SEM hash
     subprocess.run([
         "tmux", "send-keys", "-t", TARGET, "C-u",
         f".file {SNAPSHOT}", "Enter"
     ], check=True)
     print(f"🟢 .file enviado (hash={hash_val})")
+
 
 def read_session_state():
     if not SESSION_STATE.exists():
@@ -53,6 +65,7 @@ def read_session_state():
             state[k.strip()] = v.strip()
     return state
 
+
 def main():
     print("👁️ context-delivery (Python) iniciado")
     last_success = ""
@@ -62,27 +75,25 @@ def main():
 
     while True:
         new_hash = get_snapshot_hash()
+
         if new_hash and new_hash != last_success:
-            deliver(new_hash)
-            # Aguarda confirmação do estado
-            for _ in range(120):
-                state = read_session_state()
-                if state and state.get("hash") == new_hash:
-                    status = state.get("status", "")
-                    if status in ("PASS", "SUCCESS", "OK"):
-                        last_success_file.write_text(new_hash)
-                        print("✅ Sucesso")
-                        break
-                    elif status in ("TEMP_ERROR", "RETRY"):
-                        print("⚠️ Erro temporário, reenviando...")
-                        break
-                    elif status in ("FAIL", "ERROR", "PERM_ERROR"):
-                        print("❌ Erro permanente")
-                        break
-                time.sleep(1)
+            # Verifica se já foi confirmado por ACK
+            if ack_store.is_acked(new_hash):
+                print(f"✅ hash {new_hash} já confirmado por ACK")
+                last_success_file.write_text(new_hash)
+                last_success = new_hash
             else:
-                print("⏰ Timeout")
+                deliver(new_hash)
+                # Não marca como sucesso imediato.
+                # O event-parser vai confirmar via ACK.
+                # Atualizamos last_success apenas para não reenviar
+                # em loop enquanto aguardamos o ACK.
+                last_success_file.write_text(new_hash)
+                last_success = new_hash
+                print("✅ Entrega enviada (aguardando ACK do event-parser)")
+
         time.sleep(0.5)
+
 
 if __name__ == "__main__":
     main()

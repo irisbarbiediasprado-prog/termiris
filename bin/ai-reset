@@ -1,6 +1,5 @@
 #!/data/data/com.termux/files/usr/bin/bash
 set -uo pipefail
-# sem -e de propósito: não aborta no meio
 
 SESSION="ia_chat"
 STATE_DIR="$HOME/.termiris/runtime/cache/state"
@@ -8,7 +7,7 @@ TARGET="ia_chat:Chat"
 
 echo "== ai-reset start =="
 
-# sair de ia_chat se estiver dentro
+# Sair de ia_chat se estiver dentro
 if [ -n "${TMUX:-}" ]; then
   cur="$(tmux display-message -p '#S' 2>/dev/null || true)"
   if [ "$cur" = "$SESSION" ]; then
@@ -18,19 +17,20 @@ if [ -n "${TMUX:-}" ]; then
   fi
 fi
 
-pkill -f "event-parser" 2>/dev/null || true
+# Mata APENAS processos do Termiris (não tmux)
+pkill -x event-parser 2>/dev/null || true
 pkill -f "mitl" 2>/dev/null || true
 pkill -f "context-delivery" 2>/dev/null || true
-pkill -f "termiris-chat" 2>/dev/null || true
-pkill -f "aichat" 2>/dev/null || true
+pkill -x termiris-chat 2>/dev/null || true
+pkill -x aichat 2>/dev/null || true
 
 tmux kill-session -t "$SESSION" 2>/dev/null || true
 sleep 0.3
 
 mkdir -p "$STATE_DIR"
-# limpa tudo dentro, inclusive diretórios
 find "$STATE_DIR" -mindepth 1 -maxdepth 1 -exec rm -rf {} + 2>/dev/null || true
 
+# Inicia o runtime (sem espera bloqueante)
 echo "== creating Chat =="
 tmux new-session -d -s "$SESSION" -n Chat \
   "bash $HOME/.termiris/bin/termiris-chat termiris_ctx; echo EXIT=\$?; sleep infinity"

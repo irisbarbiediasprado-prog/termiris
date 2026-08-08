@@ -68,7 +68,7 @@ class ISABackend(Backend):
                     Operation(
                         instruction=PrimitiveISA.RETRIEVE,
                         payload={
-                            "provider": step.parameters.get("provider", "FILE"),
+                            "resource_type": step.parameters.get("provider", "FILE"),
                             "target": step.parameters.get("target", step.target),
                         },
                     )

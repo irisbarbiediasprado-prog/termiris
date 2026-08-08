@@ -19,7 +19,9 @@ class ProtocolDispatcher:
             try:
                 from runtime.engine import RuntimeEngine
                 self.engine = RuntimeEngine()
-            except Exception:
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
                 self.engine = None
         else:
             self.engine = engine
